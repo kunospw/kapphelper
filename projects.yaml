@@ -1,0 +1,476 @@
+# projects.yaml — KAppHelper registry
+#
+# One entry per app (internal Kairos product) or client (external engagement).
+# Anything Claude needs to know about "where does this project live and how do we ship it"
+# comes from here — never hardcoded in a skill.
+#
+# Schema:
+#   apps.<slug>       — internal Kairos products with no bound external client
+#   clients.<slug>    — external engagements; may span multiple repos/apps
+#
+# Fill-level convention:
+#   - `active_dev` set   → fully populated, currently being worked on
+#   - `active_dev: null` → skeleton entry; fill deploy/stakeholders block when work starts
+#
+# Deploy types:
+#   - docker           → docker compose stack, target=local or ssh
+#   - mobile-ios       → Flutter iOS build → App Store Connect (see iOS-Deployment-Guide.md)
+#   - mobile-android   → Android build → Play Store
+#   - not-owned        → we don't touch deploy (someone else owns it)
+#   - none             → not deployed / not applicable
+#
+# Deploy modes (docker only):
+#   - executed         → Claude runs the deploy command end-to-end (needs passwordless
+#                        docker access on the target — docker group or rootless docker)
+#   - advisory         → Claude prepares the command and hands it to the user; user
+#                        runs in their own SSH terminal (types sudo password there);
+#                        Claude does non-privileged verification (curl health etc.)
+#                        Use this whenever docker requires sudo password.
+#
+# Field naming — unambiguous:
+#   - deploy.ssh_host        → SSH alias (from ~/.ssh/config) — used when target: ssh
+#   - deploy.runs_on         → machine identifier — used when target: local (informational)
+#   - deploy.path            → repo checkout path ON the deploy machine
+#   - epicor.instances.<env>.url → Epicor server URL the APP calls out to (NOT SSH)
+#
+# Credentials are NEVER stored here — see `credentials_ref` fields for pointers.
+
+meta:
+  updated: 2026-08-12
+  version: 1
+  github_org: Kairos-Business-Solutions
+  credentials_ref: "D:/Dee's archivest/projects/Kairos/Kairos_Projects_Overview.docx"    # local-only
+  mobile_deploy_guide: "D:/Dee's archivest/projects/Kairos/iOS-Deployment-Guide.md"
+
+  # SSH aliases used across projects. Each dev configures these in their OWN
+  # ~/.ssh/config with their OWN user + identity file. This block documents
+  # what needs to exist; it does NOT hold personal keys.
+  #
+  # Naming: alias == project it primarily serves (not the DNS name), because
+  # cloud2.kairossolutions.co:7723 resolves to a dedicated TSApp box (Linux
+  # hostname `kairostsapp`), and other Kairos apps use different SSH ports.
+  ssh_aliases:
+    tsapp:
+      hostname: cloud2.kairossolutions.co                # DNS entry → routes to `kairostsapp` box
+      port: 7723
+      linux_hostname: kairostsapp                        # confirmed 2026-08-12 via ssh
+      hosts: [tsapp-pilot stack, tsapp-live stack]       # ONLY TSApp — do NOT put KConnect etc. here
+      docker_access: |
+        User `drini` is NOT in the `docker` group (2026-08-12 verified) — cannot add per Dyah.
+        Sudo requires password — cannot run non-interactively from Claude's SSH session.
+        Ken's existing wrappers in /opt/<app>/scripts/ (e.g. deploy-now.sh) are plain
+        `docker-compose` calls — they assume the runner is in the docker group (Ken is;
+        drini is not). Deploy from Claude therefore uses `deploy_mode: advisory` per
+        project — Claude prepares the command, user runs it in their own SSH terminal
+        (where they can type the sudo password), Claude does non-privileged verification.
+      ssh_config_example: |
+          Host tsapp
+              HostName cloud2.kairossolutions.co
+              User <your-username>
+              Port 7723
+              IdentityFile ~/.ssh/<your-key>.pem
+              ServerAliveInterval 60
+    kconnect:
+      hostname: <verify — cloud2.kairossolutions.co ? different DNS ?>
+      port: <verify — different from tsapp per Dyah>
+      linux_hostname: <verify — likely `kconnect01` per handbook>
+      hosts: [KConnect docker stack (kdocverify, supplier, customer, activepieces, ...)]
+      note: |
+        Jesynta runs Claude Code natively on this box — target: local for KConnect projects.
+        Dyah SSHes in for cross-check / occasional intervention.
+
+  known_credential_leaks:                              # verified committed to git — rotate before any work
+    # Values intentionally NOT reproduced here — grep the paths to see them.
+    - path: KairosWeb/KairosWebAPI/appsettings.json
+      contains: [DB SA password, JWT signing key, AWS S3 keys, SFTP credentials, Epicor API key + AUTHORIZATION_KEY (base64)]
+      verified: 2026-08-12
+    - path: KPortal-Backend/KEpicorCustomerPortal/appsettings.json
+      contains: [DB SA password, JWT signing key, Epicor API key + AUTHORIZATION_KEY (base64), Square sandbox token, SMTP password, CryptoSecretKey]
+      verified: 2026-08-12
+    - path: KairosTSApp/scripts/deploy-now.sh
+      contains: [Ken's API login password (LOGIN_PASSWORD), DB SA password (sqlcmd -P)]
+      verified: 2026-08-12
+    - path: KairosTSApp/scripts/deploy-now-simple.sh
+      contains: [same as deploy-now.sh — LOGIN_PASSWORD + DB SA password]
+      verified: 2026-08-12
+
+  clean_secret_patterns:                               # examples to copy when refactoring the leaks above
+    - KConnectApp/.env.example                         # all values are changeme_* placeholders; real .env is gitignored
+    - KairosTSApp/OrchestratorService.Api/appsettings.json  # connection string = "Password=CHANGE_ME_VIA_ENV_VAR"; env vars from .env / .env.live; runtime creds in ./secrets/*.json mounted as Docker read-only files
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# INTERNAL APPS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+apps:
+
+  # ── KDocVerify (Jesynta active) ────────────────────────────────────────────
+  kdocverify:
+    display_name: KDocVerify
+    context: apps/kdocverify/APP.md
+    summary: Document approval portal (part of KConnectApp monorepo). Being positioned as a marketable standalone product with QR/crypto/blockchain differentiation.
+    repo:
+      name: KConnectApp
+      subpath: [services/docverify-api, portals/docverify]
+      remote: https://github.com/Kairos-Business-Solutions/KConnectApp.git
+      branch: main
+    stakeholders:
+      product_owner: Ken Ho
+      devs: [Dyah Puspo Rini, Jesynta Harya]
+      active_dev: Jesynta Harya
+    tenants:
+      - name: Caterlink
+        note: first named tenant seeded in Phase 2 migration
+    plane:
+      workspace: kairos
+      project: null
+    deploy:
+      type: docker
+      target: local                                    # Jesynta runs Claude on the deploy box itself
+      runs_on: kconnect01                              # informational — the machine target: local refers to
+      path: /opt/kconnect                              # repo checkout on that machine
+      compose_file: docker-compose.yml
+      services: [docverify-api, docverify-frontend]
+      health:
+        - name: api
+          url: http://localhost:5000/health
+        - name: portal
+          url: http://localhost:3003/
+    urls:
+      production: https://kdocverify.ksol.ai
+      api: https://api.kdocverify.ksol.ai
+
+  # ── KConnect Portals (supplier + customer) — no active dev ─────────────────
+  kconnect_portals:
+    display_name: KConnect Supplier + Customer Portals
+    context: null                                          # add apps/kconnect_portals/APP.md when active
+    summary: Sibling of KDocVerify in the same KConnectApp monorepo. Live in production. Undergoing "Kairon" rebrand.
+    repo:
+      name: KConnectApp
+      subpath: [services/kconnect-api, portals/supplier, portals/customer]
+      remote: https://github.com/Kairos-Business-Solutions/KConnectApp.git
+      branch: main
+    stakeholders:
+      product_owner: Ken Ho
+      devs: []
+      active_dev: null
+    urls:
+      supplier: https://ksupplier.ksol.ai
+      customer: https://kcustomer.ksol.ai
+    deploy:
+      type: docker
+      target: local
+      runs_on: kconnect01
+      path: /opt/kconnect
+      compose_file: docker-compose.yml
+      services: [kconnect-api, kconnect-frontend-supplier, kconnect-frontend-customer]
+      # health: fill in when picked up
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXTERNAL CLIENTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+clients:
+
+  # ── TaiSin (KairosTSApp) — Dyah's project ──────────────────────────────────
+  taisin:
+    display_name: Tai Sin Enterprise (LKHE company)
+    context: null                                          # add clients/taisin/CLIENT.md when starting
+    summary: Invoice-delivery automation — .NET 8 API + Next.js 15. Generates PDF invoice packages, uploads to Google Drive, emails per customer delivery preference. Two parallel stacks (pilot + live) run on same host.
+    repos:
+      - name: KairosTSApp
+        remote: https://github.com/Kairos-Business-Solutions/KairosTSApp.git
+        subpath: [OrchestratorService.Api, frontend]
+        branch: phase-2-build                              # confirmed 2026-08-12 — server tracks this, not main
+    stakeholders:
+      client_pm: Iwan (Group IT)
+      product_owner: Ken Ho
+      devs: [Dyah Puspo Rini]
+      active_dev: Dyah Puspo Rini
+    plane:
+      workspace: kairos
+      project: 461f73d9-ae23-4894-a4af-a801f2f0ea09        # KAIROSTSAP
+    epicor:
+      instances:
+        pilot:
+          url: https://taisin-third.epicorsaas.com/server   # confirmed in OrchestratorService.Api/appsettings.json
+          kepicorhelper_profile: taisin_third               # verify actual slug in KEpicorHelper
+        live:
+          url: via ${EPICOR_SERVER_INSTANCE} in .env.live   # value not hardcoded in repo — read from .env.live on the server
+          kepicorhelper_profile: taisin_live                # verify actual slug in KEpicorHelper
+    companies:
+      # Tai Sin group companies synced by orchestrator (appsettings.Sync.Companies)
+      list: [LKHE, LKHP, LKHPD, TSPD, EG, TSE]
+      primary: LKHE
+      google_drive_ids:                                    # per-company Shared Drive for PDF uploads
+        01_LKHE: 0AMbJQP6BGaysUk9PVA
+        02_LKHP: 0AL_v7KWOLG5sUk9PVA
+        03_LKHPD: 0ABOjLKIz0wyPUk9PVA
+        04_TSPD: 0AHo5qvb7ix8tUk9PVA
+        05_EG: 0AHuLradvqQT-Uk9PVA
+    urls:
+      production_new: https://tsapp.ksol.ai                # LIVE stack (Ken 2026-07-31 migration off kairosai.bot)
+      pilot: https://tsapp-pilot.ksol.ai                   # PILOT/test stack
+      production_old: https://tsapp.kairosai.bot           # legacy — moving off
+    deploys:                                               # TWO stacks on ONE host — never share DB volumes
+      pilot:
+        type: docker
+        target: ssh
+        ssh_host: tsapp                                    # → cloud2.kairossolutions.co:7723 per meta.ssh_aliases
+        mode: advisory                                     # Claude prepares command, user runs (sudo needs password)
+        path: /opt/KairosTSApp                             # confirmed 2026-08-12 via ssh
+        compose_file: docker-compose.yml
+        compose_project: tsapp                             # docker compose -p tsapp
+        env_file: .env
+        services: [mssql, orchestrator-api, frontend]
+        containers: [kairos-mssql, orchestrator-service, kairos-frontend]
+        ports:
+          frontend: 3000
+          api: 5000
+        health:
+          - name: api
+            url: http://localhost:5000/health
+        secrets_dir: ./secrets/                            # epicor-credentials.json, google-drive-sa.json, email-config.json
+        volume: mssql-data
+        uses_epicor: pilot                                 # references epicor.instances.pilot
+        common_commands:                                   # Dyah's actual workflow — Claude generates these verbatim in advisory mode
+          deploy: |
+            cd /opt/KairosTSApp
+            git pull
+            sudo docker compose up -d --build
+          db_shell: |
+            sudo docker exec -it kairos-mssql \
+              /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$SA_PASSWORD" -d KairosTSDB
+          tail_api_logs: |
+            sudo docker logs orchestrator-service -f --tail=1000
+          tail_frontend_logs: |
+            sudo docker logs kairos-frontend -f --tail=200
+          restart_only:                                    # no rebuild — for config-only changes
+            sudo docker compose restart orchestrator-api
+      live:
+        type: docker
+        target: ssh
+        ssh_host: tsapp                                    # same host as pilot
+        mode: advisory                                     # Claude prepares command, user runs (sudo needs password)
+        path: /opt/KairosTSApp                             # same repo checkout as pilot (both stacks run from one clone)
+        compose_file: docker-compose.live.yml
+        compose_project: tsapp-live                        # docker compose -p tsapp-live
+        env_file: .env.live
+        services: [mssql, orchestrator-api, frontend]
+        containers: [kairos-mssql-live, orchestrator-service-live, kairos-frontend-live]
+        ports:
+          frontend: 3001
+          api: 5001
+        health:
+          - name: api
+            url: http://localhost:5001/health
+        secrets_dir: ./secrets-live/                       # separate secrets from pilot
+        volume: mssql-data-live                            # DISTINCT from pilot volume — never share
+        uses_epicor: live                                  # references epicor.instances.live
+        common_commands:                                   # LIVE needs the explicit -p/-f/--env-file flags — bare `docker compose up` hits pilot
+          deploy: |
+            cd /opt/KairosTSApp
+            git pull
+            sudo docker compose -p tsapp-live --env-file .env.live -f docker-compose.live.yml up -d --build
+          db_shell: |
+            sudo docker exec -it kairos-mssql-live \
+              /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$SA_PASSWORD" -d KairosTSDB
+          tail_api_logs: |
+            sudo docker logs orchestrator-service-live -f --tail=1000
+          tail_frontend_logs: |
+            sudo docker logs kairos-frontend-live -f --tail=200
+          restart_only:
+            sudo docker compose -p tsapp-live -f docker-compose.live.yml restart orchestrator-api
+        # ⚠️ InvoiceHeaders stores Epicor company as plain string — no env marker.
+        # Two stacks sharing one DB makes pilot/live invoices indistinguishable — that's WHY separate stacks.
+        # ⚠️ Bare `sudo docker compose up` (no flags) hits PILOT — Live REQUIRES the -p/-f/--env-file trio.
+
+  # ── TWL group (KFMS + KTime-POD) ───────────────────────────────────────────
+  twl:
+    display_name: Tiong Woon Logistics (TWL, TCS, TWPC)
+    context: null
+    summary: Umbrella logistics/fleet client. Two products serve them — KFMS (fleet management) and KTime-POD (time entry + proof-of-delivery). Both share the KairosWeb .NET backend on separate long-lived branches.
+    repos:
+      - name: KairosWeb                                    # shared .NET backend
+        remote: https://github.com/Kairos-Business-Solutions/KairosWeb.git
+        branch: FMS                                        # per handbook; TWPC-TC also feeds KTime-POD
+        note: |
+          Multi-branch backend — FMS branch = KFMS backend; TWPC-TC branch = KTime-POD backend.
+          appsettings.json currently points at saas579pilot (TWL pilot Kinetic tenant).
+          ⚠️ appsettings.json has committed SA password + JWT + AWS + SFTP credentials — rotate.
+      - name: KFMS-Web                                     # dispatcher dashboard (React)
+        remote: https://github.com/Kairos-Business-Solutions/KFMS-Web.git
+        branch: master
+      - name: KFMS-Mobile                                  # driver app (Flutter)
+        remote: https://github.com/Kairos-Business-Solutions/KFMS-Mobile.git
+        branch: nazmitest
+      - name: KTime-POD-Mobile-TCS                         # time-entry / POD (Flutter)
+        remote: https://github.com/Kairos-Business-Solutions/KTime-POD-Mobile-TCS.git
+        branch: main
+    stakeholders:
+      product_owner: Ken Ho
+      devs: []
+      active_dev: null
+    epicor:
+      instances:
+        pilot:                                             # current — from KairosWeb/appsettings.json
+          url: https://seasiadtpilot07.epicorsaas.com/saas579pilot
+          company: 165746B                                 # TWL pilot
+          kepicorhelper_profile: null                      # not registered per Dyah
+        history:                                           # previous configurations (commented in appsettings)
+          - url: https://seasiadtapp07.epicorsaas.com/SaaS579
+            company: 165745
+            note: earlier TWL
+          - url: https://seasiadtapp07.epicorsaas.com/SaaS579
+            company: 165746B
+            note: TWL variant
+          - url: https://seasiadtadtl06.epicorsaas.com/SaaS579third
+            company: 165746B
+            note: TCS new change
+    urls:
+      time_entry_api: https://cloud2.kairossolutions.co/kairostimeentry/api
+    deploys:                                               # different deploy targets per repo
+      KairosWeb:
+        type: docker
+        target: ssh
+        ssh_host: <verify — different from tsapp; possibly a separate box>
+        path: <need-to-determine>
+        # ⚠️ Rotate secrets before touching prod
+      KFMS-Web:
+        type: docker
+        target: ssh
+        ssh_host: <need-to-determine>
+        path: <need-to-determine>
+      KFMS-Mobile:
+        type: mobile-ios
+        target_store: apple-app-store
+        build_machine: shared Mac (see mobile_deploy_guide)
+        bundle_id: co.kairossolutions.kfms
+        signing: manual (Apple Distribution + ExportOptions.plist)
+        repo_path_on_mac: /opt/kairos/KFMS-Mobile
+      KTime-POD-Mobile-TCS:
+        type: mobile-ios
+        target_store: apple-app-store
+        build_machine: shared Mac (see mobile_deploy_guide)
+        # bundle_id / signing details: verify per iOS-Deployment-Guide.md
+
+  # ── Sushi Tei (KOMS-Mobile) — mobile only, backend not ours ────────────────
+  sushitei:
+    display_name: Sushi Tei
+    context: null
+    summary: KOMS-Mobile — Flutter OMS app with JWT multi-outlet login, goods receiving with digital signature, inventory transfers, purchase requisitions. Backend is NOT ours to deploy.
+    repos:
+      - name: KOMS-Mobile
+        remote: https://github.com/Kairos-Business-Solutions/KOMS-Mobile.git
+        branch: main
+      # KOMS-Backend exists in the org but we don't own its deploy — see note below
+    stakeholders:
+      product_owner: Ken Ho
+      devs: []
+      active_dev: null
+    epicor:
+      instances:
+        prod:
+          url: https://cloud2.kairossolutions.co/kepicoroms
+          kepicorhelper_profile: null
+    urls:
+      swagger: https://cloud2.kairossolutions.co/kepicoroms/swagger/index.html
+    deploy:
+      type: mobile-ios
+      target_store: apple-app-store
+      build_machine: shared Mac (see mobile_deploy_guide)
+      signing: automatic (Xcode-managed)
+      repo_path_on_mac: /opt/kairos/KOMS-Mobile
+      note: KOMS-Backend exists as a repo but we do not deploy it — App Store only for us
+
+  # ── Galvins (KPortal) — not active ─────────────────────────────────────────
+  galvins:
+    display_name: Galvins
+    context: null
+    status: not-active                                     # no current dev work
+    summary: KPortal — React 17/Redux Toolkit supplier web portal + .NET backend (KEpicorCustomerPortal), multilingual EN/ZH/ID.
+    repos:
+      - name: KPortal-Backend
+        remote: https://github.com/Kairos-Business-Solutions/KPortal-Backend.git
+        branch: main
+        note: |
+          ⚠️ Live credentials committed in KEpicorCustomerPortal/appsettings.json —
+          DB SA password, JWT key, Epicor API key + AUTHORIZATION_KEY, Square sandbox token,
+          SMTP password, CryptoSecretKey. Rotate before ANY work resumes here. (PROPOSAL §8)
+        target_framework_note: both net7.0 and net8.0 build outputs exist — verify current TFM before build
+      - name: KPortal-Supplier-React
+        remote: https://github.com/Kairos-Business-Solutions/KPortal-Supplier-React.git
+        branch: main
+      - name: KPortal-Mobile-GAL
+        remote: null                                       # exists in org, verify slug
+        branch: main
+        status: inactive                                   # per Dyah — not an active project
+    stakeholders:
+      product_owner: Ken Ho
+      devs: []
+      active_dev: null
+    epicor:
+      instances:
+        uat:                                               # confirmed in KPortal-Backend appsettings + KairosWeb appsettings
+          url: https://cloud2.kairossolutions.co/kineticuatgal/api/v2/odata/10GAL/
+          company: 10GAL
+          kepicorhelper_profile: galvins_qa                # verify actual slug in KEpicorHelper
+    deploy:
+      type: docker
+      target: null                                         # not-active — fill in only if picked up
+      note: KPortal-Backend uses docker service name "sqlserver" (not "mssql") — check compose when reviving
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TEMPLATE — copy, rename, fill in
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# <slug>:
+#   display_name: <human-friendly name>
+#   context: apps/<slug>/APP.md               # or clients/<slug>/CLIENT.md
+#   summary: <one-line what/why>
+#   status: active | not-active               # default active if omitted
+#   repo:                                     # or "repos:" list for multi-repo
+#     name: <repo folder name>
+#     remote: https://github.com/Kairos-Business-Solutions/<repo>.git
+#     branch: main
+#     subpath: [<sub-modules if monorepo>]
+#   stakeholders:
+#     product_owner: <name>
+#     devs: [<name>, ...]                     # flat list, no hierarchy
+#     active_dev: <name or null>              # who's driving day-to-day right now
+#     client_pm: <name>                       # for clients only
+#   plane:
+#     workspace: kairos
+#     project: <UUID or null>
+#   epicor:                                   # optional — the Epicor server the APP calls
+#     instances:
+#       <env_name>:                           # pilot | live | uat | qa
+#         url: https://<host>/<path>          # what the app calls out to
+#         company: <company code>             # e.g. LKHE, 10GAL, 165746B
+#         kepicorhelper_profile: <slug or null>
+#   deploy:                                   # single stack — or "deploys:" map for multi-stack (see taisin)
+#     type: docker | mobile-ios | mobile-android | not-owned | none
+#     # For target: local (Claude runs on the deploy machine) —
+#     target: local
+#     runs_on: <machine name>                 # informational
+#     # For target: ssh (Claude SSHes out) —
+#     target: ssh
+#     ssh_host: <alias from meta.ssh_aliases> # e.g. tsapp, kconnect
+#     # Both local + ssh use these —
+#     path: /opt/<slug>                       # repo checkout on the deploy machine
+#     compose_file: docker-compose.yml
+#     compose_project: <optional docker compose -p name>
+#     env_file: .env
+#     services: [<compose service names>]
+#     containers: [<container_name values if you set them>]
+#     health:
+#       - name: <label>
+#         url: <health endpoint>
+#     # mobile-ios specifics —
+#     target_store: apple-app-store
+#     build_machine: <name or "shared Mac (see mobile_deploy_guide)">
+#     bundle_id: <e.g. co.kairossolutions.kfms>
+#     signing: automatic | manual
+#     repo_path_on_mac: /opt/kairos/<repo>
+#   urls:                                     # production / staging / api / pilot — optional
+#     production: <url>

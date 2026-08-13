@@ -1,0 +1,22 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Runtime artifacts (regenerable)
+artifacts/
+logs/
+
+# Editor / OS noise
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local scratchpads
+scratch/
+tmp/
+
+# Claude Code local state (per-machine, not shared)
+.claude/settings.local.json
