@@ -20,4 +20,5 @@ against.
 
 ## Index
 
-_(empty — first entry lands when we first learn something worth keeping)_
+- [Audit controllers by class, not file](feedback_audit-controllers-by-class.md) — a file can hold multiple controller classes with different guards; grep by line number can't tell which.
+- [Confirm before mutating shared accounts](feedback_confirm-before-mutating-shared-accounts.md) — don't assume every account matching a test scenario is a throwaway; ask before resetting/deleting.
