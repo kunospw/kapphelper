@@ -11,6 +11,7 @@ Four things that work together:
    - `/deploy <project> <stack>` — reads deploy config from `projects.yaml`, runs non-privileged pre-flight, hands sudo command to user (advisory mode) or executes (executed mode, if configured)
    - `/capture` — turns ad-hoc info (meeting note, decision, screenshot, email) into properly-formatted capture file. Scrubs credentials. Drafts Plane issue if actionable (never auto-creates).
    - `/handover` — surfaces uncaptured durable info from the session, commits kapphelper changes, pushes to GitHub. Advisory-only for app-repo pushes.
+   - `/plane-sync` — queries Plane for the current project's open/urgent/recently-changed issues, cross-references with existing captures, proposes captures for gaps. Read-only to Plane; drafts captures for user approval before writing.
 
 2. **Registry (`projects.yaml`)** — single source of truth for every custom-app project: server hostname, deploy path, ports, health checks, contacts, credential locations (references only — never values).
 
@@ -110,7 +111,6 @@ Checklist before another machine clones kapphelper:
 
 Ideas for future skills that would fit the pattern:
 
-- **`/plane-sync`** — pull Plane issues status for the current project, write captures for blockers/urgent items, surface in briefing
 - **`/rotate-secrets`** — walk through fixing a credential leak flagged in `projects.yaml.known_credential_leaks`
 - **`/onboard-app <slug>`** — scaffold a new project: append to `projects.yaml` from template, create `APP.md`/`CLIENT.md` skeleton, create `baseline/` + `capture/` dirs
 - **`/promote-to-org`** — checklist runner for moving kapphelper from personal to Kairos-Business-Solutions org
