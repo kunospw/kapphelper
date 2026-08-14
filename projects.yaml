@@ -175,7 +175,7 @@ clients:
   # ── TaiSin (KairosTSApp) — Dyah's project ──────────────────────────────────
   taisin:
     display_name: Tai Sin Enterprise (LKHE company)
-    context: null                                          # add clients/taisin/CLIENT.md when starting
+    context: clients/taisin/CLIENT.md
     summary: Invoice-delivery automation — .NET 8 API + Next.js 15. Generates PDF invoice packages, uploads to Google Drive, emails per customer delivery preference. Two parallel stacks (pilot + live) run on same host.
     repos:
       - name: KairosTSApp
