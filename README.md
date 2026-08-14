@@ -65,6 +65,10 @@ kapphelper/
     └── session-start/              # orient at session start
 ```
 
+## Deeper reference
+
+- **`docs/using-kapphelper.md`** — day-to-day usage: session flow, adding content, multi-writer git flow with conflict recipes, onboarding a new machine, ideas for extension.
+
 ## Rules that matter most
 
 Full list in `CLAUDE.md`. The two that trip people up:
