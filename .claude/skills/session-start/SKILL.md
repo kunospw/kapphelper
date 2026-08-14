@@ -42,7 +42,7 @@ For the chosen `<slug>`, read in order:
 1. `apps/<slug>/APP.md` or `clients/<slug>/CLIENT.md` — what/why/phase/owners
 2. Latest 3 files in `apps/<slug>/capture/` (or `clients/<slug>/capture/`), newest first —
    most recent decisions and meeting notes
-3. `memory/MEMORY.md` — scan for entries tagged to this project
+3. `memory/MEMORY.md` — scan the whole index. Surface both project-tagged entries AND universal rules (commit format, credential handling, git branch model, etc — anything the description makes clear applies broadly). Universal rules missed here become re-work later.
 
 ### 4. Check the app repo state
 

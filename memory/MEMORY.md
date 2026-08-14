@@ -20,5 +20,6 @@ against.
 
 ## Index
 
+- [Commit format (Conventional Commits — universal)](feedback_commit_format.md) — every commit in every repo must be `<type>(<scope>): <desc>`; free-form summaries belong in handover docs / captures, not commit messages.
 - [Audit controllers by class, not file](feedback_audit-controllers-by-class.md) — a file can hold multiple controller classes with different guards; grep by line number can't tell which.
 - [Confirm before mutating shared accounts](feedback_confirm-before-mutating-shared-accounts.md) — don't assume every account matching a test scenario is a throwaway; ask before resetting/deleting.
