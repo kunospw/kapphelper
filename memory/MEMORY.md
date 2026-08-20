@@ -24,3 +24,5 @@ against.
 - [Audit controllers by class, not file](feedback_audit-controllers-by-class.md) — a file can hold multiple controller classes with different guards; grep by line number can't tell which.
 - [Confirm before mutating shared accounts](feedback_confirm-before-mutating-shared-accounts.md) — don't assume every account matching a test scenario is a throwaway; ask before resetting/deleting.
 - [Verify DB state before trusting zero-regression claims](feedback_verify-db-state-before-trusting-zero-regression-claims.md) — "this table is currently blank" is a claim to query, not infer from chat history.
+- [Notify before pushing to shared main](feedback_notify-before-shared-main-push.md) — if another dev has WIP on the same repo, ping them before pushing so they aren't blindsided by rebase pain.
+- [Project checkouts map](reference_project-checkouts.md) — where each app repo is checked out (which machines, which users, which is primary); `git fetch` before starting work in any of them.
