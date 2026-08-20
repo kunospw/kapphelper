@@ -50,12 +50,22 @@ From `projects.yaml` `repo:` block, find the app repo path on disk. Then:
 
 ```bash
 cd <app-repo-path>
-git status --short
+git fetch origin --quiet          # catch divergence before user starts editing
+git status -sb
 git log --oneline -5
 git branch --show-current
 ```
 
 Note: uncommitted changes, current branch, last 5 commits.
+
+**If the fetch reveals divergence** (`ahead N, behind M` where M > 0 — or diverged):
+
+- Stop and surface it in the briefing before letting the user continue.
+- Divergence usually means either (a) the same repo has a second active checkout somewhere (see `reference_project_checkouts.md`) or (b) another dev pushed while you were away.
+- Recommend resolution based on state: `git pull --ff-only` if only behind; `git pull --rebase` if diverged with clean tree; commit/stash first if there are also uncommitted changes.
+- Do NOT auto-resolve. User decides.
+
+**If fetch fails** (no network, wrong remote, auth issue): note it in the briefing as "⚠️ remote state unknown" and proceed with local-only view. Don't fail the whole briefing on a fetch error.
 
 ### 5. Optional — check Plane
 
