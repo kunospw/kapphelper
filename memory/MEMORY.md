@@ -26,3 +26,5 @@ against.
 - [Verify DB state before trusting zero-regression claims](feedback_verify-db-state-before-trusting-zero-regression-claims.md) — "this table is currently blank" is a claim to query, not infer from chat history.
 - [Notify before pushing to shared main](feedback_notify-before-shared-main-push.md) — if another dev has WIP on the same repo, ping them before pushing so they aren't blindsided by rebase pain.
 - [Project checkouts map](reference_project-checkouts.md) — where each app repo is checked out (which machines, which users, which is primary); `git fetch` before starting work in any of them.
+- [Verify fix scope before generalizing](feedback_verify-fix-scope-before-generalizing.md) — a "prevent duplicate X" fix needs to know exactly which repetition is unwanted; scoping too broadly can silently delete legitimate state.
+- [Docker log timestamps are UTC](feedback_docker-log-timestamps-are-utc.md) — don't build an absolute `--since`/`--until` window from a screenshot's local clock; use a relative window instead.
