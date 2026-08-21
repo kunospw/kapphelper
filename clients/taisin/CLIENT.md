@@ -38,12 +38,25 @@ Workstreams landed since the 14 Aug write-up:
 
 - **Track A — per-company user access control** (KAIROSTSAP-87). Full three-tier model
   (user/company-admin/superadmin), `CompUser` table, authorization across ~25 data-plane endpoints,
-  admin UI to assign users to companies. **Verified on Pilot, now deployed to Live too** — but
-  Live's `CompUsers` table is still empty (no lockout risk thanks to the fallback above, but the
-  restriction isn't actually *active* on Live yet). Replicating Pilot's assignments
-  (Zexuan/Carol→LKHE, David→LKHP, Stella→both as admin) on Live is still an open task.
-- **Password management Phase 1** — forced-change modal + admin reset, done. Phase 2
-  (self-service forgot-password) still blocked on which mailbox sends the reset email.
+  admin UI to assign users to companies. **Closed end-to-end on both stacks 2026-08-21.** Live's
+  `CompUsers` was populated to match Pilot (Zexuan/Carol→LKHE, David→LKHP, Stella→LKHE+LKHP as
+  admin) — caught and fixed one mistake in the process, Stella had been assigned to `LKHPD`
+  (wrong company, similar code) instead of `LKHP`. Audited Live's `UserAccounts` for
+  zero-`CompUsers`, non-superadmin accounts before flipping anything: same 5 test/throwaway
+  accounts as Pilot (Eileen, dyahrini908@gmail.com, info@, ken.ho2@, user@example.com), no real
+  account at risk. Live rebuilt (this also picked up everything else landed since its last build —
+  concurrent-load fix pass, empty-state screen, multi-select company assignment UI, pdf-summary
+  companyId fix, login-error-display fix below) and `UnassignedUsersSeeAllCompanies: false`
+  confirmed live in the running container's `appsettings.json`.
+- **Login page 401 error was getting clobbered** — a global axios interceptor treated *any* 401,
+  including a failed login attempt itself, as a session expiry and redirected 100ms later,
+  wiping the login page's own persistent error message (e.g. "Invalid email or password" for a
+  deactivated account) and replacing it with a misleading "session expired" banner. Fixed by
+  excluding `/api/auth/login` from that redirect. Deployed to Pilot, verified with the
+  `dyahrini908@gmail.com` test account (deactivated via direct SQL for the test).
+- **Password management Phase 1** — forced-change modal + admin reset, done, and now the
+  *permanent* mechanism. **Phase 2 (self-service forgot-password, D4) dropped 2026-08-21** —
+  Dyah's call, no email-based reset will be built. D5 (which mailbox) is moot as a result.
 - **Track B — per-company Epicor server routing** (KAIROSTSAP-51) — verified on Pilot with a real
   Test Connection + invoice regeneration.
 - **Epicor credentials in the database** (KAIROSTSAP-51/75, decisions E1–E8 in
@@ -118,13 +131,13 @@ prepares the exact command, user runs it in their own SSH terminal.
 
 ## Known gaps / open threads (as of 2026-08-21)
 
-- **Live's `CompUsers` table is still empty — now more urgent.** Track A isn't actively
-  restricting anyone there, and unlike Pilot, Live's `UnassignedUsersSeeAllCompanies` flag has
-  **not** been flipped (flipping it before assignments exist would lock out Stella/Ze
-  Xuan/Carol/David at once). Needs Pilot's assignments replicated, verified, then the flag flipped
-  on Live too — see `docs/unassigned-user-access-plan.md`'s Live section for the exact order.
-- The full concurrent-load fix pass (`docs/epicor-load-plan.md`) is Pilot-only — Live hasn't been
-  rebuilt since this work started, so the original PDF-generation-failure fix isn't in production yet.
+- ~~Live's `CompUsers` table is still empty~~ — **resolved 2026-08-21**: assignments replicated
+  (fixed a Stella LKHPD→LKHP mistake in the process), flag flipped, confirmed live in the running
+  container's `appsettings.json`. Live rebuilt in the process, so this also picked up the
+  concurrent-load fix pass, empty-state screen, and everything else landed since Live's last build.
+- `dyahrini908@gmail.com` (test account) was deactivated (`IsActive=0`) on **Pilot** only, as part
+  of the login-error-fix test above — still `IsActive=1` on Live. Asked Dyah whether to deactivate
+  on Live too for consistency; unanswered so far, left as-is.
 - Customer PO Drive-first only works for LKHE — the other 5 companies need their own Current PO
   drives from Iwan (KAIROSTSAP-91), and each one needs its actual contents checked before trusting
   it, not just its existence (see the LKHE second-drive finding above).
