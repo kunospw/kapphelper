@@ -135,7 +135,9 @@ prepares the exact command, user runs it in their own SSH terminal.
   common enough to build tolerance for.
 - E9 (SMTP password rotation) — deferred, not resolved. Recommended regardless of the rest of the
   credentials plan.
-- D5 open: which mailbox sends password-reset emails — needed before Phase 2 self-service reset.
+- ~~D5 open: which mailbox sends password-reset emails~~ — **resolved 2026-08-21**: Phase 2
+  self-service forgot-password (D4) dropped per Dyah's decision. Admin-reset (D1-D3, already live)
+  is the permanent mechanism; D5 is moot. See `KairosTSApp/docs/password-management-plan.md`.
 - Two active TSApp git checkouts for Dyah (this server + Windows) already caused one auto-merge
   incident (2026-08-20, resolved cleanly) — see kapphelper `memory/reference_project-checkouts.md`
   and `memory/feedback_notify-before-shared-main-push.md`. Fetch before starting work in either.
