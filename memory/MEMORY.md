@@ -28,3 +28,4 @@ against.
 - [Project checkouts map](reference_project-checkouts.md) — where each app repo is checked out (which machines, which users, which is primary); `git fetch` before starting work in any of them.
 - [Verify fix scope before generalizing](feedback_verify-fix-scope-before-generalizing.md) — a "prevent duplicate X" fix needs to know exactly which repetition is unwanted; scoping too broadly can silently delete legitimate state.
 - [Docker log timestamps are UTC](feedback_docker-log-timestamps-are-utc.md) — don't build an absolute `--since`/`--until` window from a screenshot's local clock; use a relative window instead.
+- [Undeployed commit missing deploy log line](feedback_undeployed-commit-missing-deploy-log-line.md) — a commit lacking the usual "deployed" line in CHANGELOG/tracker is a sign it was never rebuilt.
