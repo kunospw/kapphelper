@@ -20,7 +20,7 @@ SSH alias `tsapp`): **Pilot** (`tsapp-pilot.ksol.ai`, ports 3000/5000) for testi
 (`tsapp.ksol.ai`, ports 3001/5001) for production. Separate DBs, separate secrets — never share
 volumes between them.
 
-## Current phase (as of 2026-08-20)
+## Current phase (as of 2026-08-21)
 
 **Go-live targeted 1 September 2026.** LKHE users first; LKHP onboarding is explicitly gated on
 per-company data isolation actually working (Iwan, 6 Aug meeting — see
@@ -66,6 +66,29 @@ Workstreams landed since the 14 Aug write-up:
   Stella/Ze Xuan before trusting it. Open: a `PO_`-infix filename variant seen in real data isn't
   handled yet (safe failure, not wrong-file risk); the packing-slip question (Ken, 6 Aug) is still
   unanswered.
+- **Concurrent-load fix pass** (`docs/epicor-load-plan.md`, KAIROSTSAP-44/67) — root cause of the
+  intermittent PDF generation failures (`K_GetRptData did not return a PDF after 24 attempts`): the
+  app itself was flooding Epicor with unbounded concurrent BAQ traffic every time anyone browsed
+  the invoice list, starving an in-flight report generation. Full Tier 1/1½ checklist done and
+  **log-verified** on Pilot — persisted doc-readiness counts (list page now makes zero Epicor calls
+  per row), cached customer invoice options, capped concurrent `SubmitToAgent` calls, plain-language
+  "Epicor is busy" instead of a raw timeout, and a "Retry these N" batch UI. The plan's own final
+  proof (generate while a second session pages a 26,835-row list) reproduced on purpose and held
+  clean — 11 `GENERATE_TIMING` lines, zero errors. Found and fixed 3 real bugs along the way
+  (T1-A's migration silently never applying, a DbContext-concurrency race in the doc-count refresh,
+  and a concurrent-duplicate-generate race that could leave two PDFs in one invoice's Drive folder
+  — see [[verify-fix-scope-before-generalizing]] for the lesson from over-correcting that last one).
+  **Not yet deployed to Live.**
+- **Company-admin-scoped password reset UI** — the backend endpoint existed since Phase 1 but had
+  no UI; a company admin like Stella had no way to reset a locked-out user in her own company
+  without going through a superadmin. Built + deployed to Pilot.
+- **Unassigned-user-access closure** (`docs/unassigned-user-access-plan.md`, KAIROSTSAP-98) — the
+  Track A rollout scaffold (`UnassignedUsersSeeAllCompanies=true`) let any unassigned account see
+  all six companies; found via a real account (`eileen.daneaya@...`) on Pilot. Built the
+  explanatory empty-state screen, audited who'd be locked out (5 accounts, confirmed test/throwaway
+  by drini, deliberately left unresolved), and **flipped the flag to `false` on Pilot**. Live is
+  explicitly untouched — its `CompUsers` table still has 0 rows, and flipping the same flag there
+  before creating real assignments would lock out Stella/Ze Xuan/Carol/David all at once.
 
 ## Where the source-of-truth docs live
 
@@ -81,6 +104,8 @@ itself, which is where a `.NET`/`Next.js` dev will actually look:
   written same-day while the detail was exact — worth reading before touching credential resolution
   again, not just for the fix but for the "verification has to touch the data" pattern
 - `KairosTSApp/docs/session-handover-2026-08-14.md` — narrative session handover, written mid-session
+- `KairosTSApp/docs/epicor-load-plan.md` — concurrent-load fix pass, Tier 1/1½ decisions + build guide
+- `KairosTSApp/docs/unassigned-user-access-plan.md` — closing the unassigned-user rollout scaffold
 
 kapphelper holds the durable, cross-session-relevant *decisions* and *lessons* (this file, the
 capture above, `memory/feedback_*`), not a mirror of the app repo's own docs.
@@ -91,11 +116,15 @@ Per `../../projects.yaml` `clients.taisin.deploys` — two stacks, `mode: adviso
 the `docker` group on this host; sudo needs a password Claude can't type non-interactively). Claude
 prepares the exact command, user runs it in their own SSH terminal.
 
-## Known gaps / open threads (as of 2026-08-20)
+## Known gaps / open threads (as of 2026-08-21)
 
-- Live's `CompUsers` table is empty — Track A isn't actively restricting anyone there yet
-  (protected from lockout by the unassigned-fallback, but not doing its job either). Needs Pilot's
-  assignments replicated.
+- **Live's `CompUsers` table is still empty — now more urgent.** Track A isn't actively
+  restricting anyone there, and unlike Pilot, Live's `UnassignedUsersSeeAllCompanies` flag has
+  **not** been flipped (flipping it before assignments exist would lock out Stella/Ze
+  Xuan/Carol/David at once). Needs Pilot's assignments replicated, verified, then the flag flipped
+  on Live too — see `docs/unassigned-user-access-plan.md`'s Live section for the exact order.
+- The full concurrent-load fix pass (`docs/epicor-load-plan.md`) is Pilot-only — Live hasn't been
+  rebuilt since this work started, so the original PDF-generation-failure fix isn't in production yet.
 - Customer PO Drive-first only works for LKHE — the other 5 companies need their own Current PO
   drives from Iwan (KAIROSTSAP-91), and each one needs its actual contents checked before trusting
   it, not just its existence (see the LKHE second-drive finding above).
@@ -106,12 +135,16 @@ prepares the exact command, user runs it in their own SSH terminal.
   common enough to build tolerance for.
 - E9 (SMTP password rotation) — deferred, not resolved. Recommended regardless of the rest of the
   credentials plan.
-- Reset-password UI exists for superadmin; company-admin-scoped reset has no UI yet (endpoint
-  exists, API/Swagger only).
 - D5 open: which mailbox sends password-reset emails — needed before Phase 2 self-service reset.
 - Two active TSApp git checkouts for Dyah (this server + Windows) already caused one auto-merge
   incident (2026-08-20, resolved cleanly) — see kapphelper `memory/reference_project-checkouts.md`
   and `memory/feedback_notify-before-shared-main-push.md`. Fetch before starting work in either.
+  Note: the server checkout's git remote now uses HTTPS + `gh auth` (account `kunospw`), not SSH —
+  see `reference_project-checkouts.md`.
+- 5 test/throwaway accounts on Pilot now blocked by the unassigned-user gate (deliberately, not a
+  bug) — `eileen.daneaya@...`, `dyahrini908@gmail.com`, `info@kairossolutions.co`,
+  `ken.ho2@kairossolutions.co`, `user@example.com`. Left unresolved on purpose (drini confirmed
+  test accounts); revisit if any of these turn out to be a real login someone needs.
 
 ## Capture (append-only)
 
