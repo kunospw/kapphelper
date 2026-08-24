@@ -20,7 +20,7 @@ SSH alias `tsapp`): **Pilot** (`tsapp-pilot.ksol.ai`, ports 3000/5000) for testi
 (`tsapp.ksol.ai`, ports 3001/5001) for production. Separate DBs, separate secrets — never share
 volumes between them.
 
-## Current phase (as of 2026-08-21)
+## Current phase (as of 2026-08-24)
 
 **Go-live targeted 1 September 2026.** LKHE users first; LKHP onboarding is explicitly gated on
 per-company data isolation actually working (Iwan, 6 Aug meeting — see
@@ -102,6 +102,53 @@ Workstreams landed since the 14 Aug write-up:
   by drini, deliberately left unresolved), and **flipped the flag to `false` on Pilot**. Live is
   explicitly untouched — its `CompUsers` table still has 0 rows, and flipping the same flag there
   before creating real assignments would lock out Stella/Ze Xuan/Carol/David all at once.
+
+Workstreams landed 2026-08-24 (Pilot, `phase-2-build`):
+
+- **PDF Summary trusted `?company=` from the URL** (KAIROSTSAP-99) — the detail page loaded the
+  invoice by GUID but used the URL's company param for every Epicor-facing call (do-precheck,
+  customer-options, po-match-preview, and every mutating action — Generate/Send/Upload DO). Found
+  in UAT ACC-05. Fixed in two passes: first the calls themselves (derive `company` from the loaded
+  invoice), then a follow-up once manual testing showed the address bar itself still contradicted
+  the invoice shown — `router.replace()` now silently corrects the URL once the real company is
+  known.
+- **Company admin couldn't add a new user; new users could be created unassigned** (KAIROSTSAP-100)
+  — the "Create User" button was superadmin-only, and the one other assignment path only worked on
+  users already visible to that admin's scoped list, so a brand-new person was simply unreachable.
+  Separately, the superadmin creation flow itself never required a company, contradicting Iwan's
+  "must be assigned to at least one company" rule. One unified dialog now covers both, company
+  selection is required, and a company-admin viewer's picker is restricted to companies they
+  actually administer (new `isCompAdmin` flag on `/api/user/my-companies`). Implemented, not yet
+  tested on Pilot.
+- **Company admin "View Companies" always 403'd** (KAIROSTSAP-101) — found during an internal
+  pre-UAT sweep as Stella: `GetUserComps` had no company-admin branch at all, unlike its sibling
+  `GetAllUsers` in the same controller. Fixed to mirror that scoping. Implemented, not yet tested.
+- **Admin Users page toasts never render** (KAIROSTSAP-102) — `Snackbar` state is set in 7 places
+  (delete user, remove org/company link, reset password) but the component was never imported or
+  rendered, so every one of those confirmations is silently dropped. Low severity — nothing is
+  actually wrong server-side. **Not yet implemented**, brief only.
+- **Pilot Epicor sync down most of the day** (KAIROSTSAP-103) — three stacked faults, each masking
+  the next: (A) a rotated Epicor API key left stale in *two* separate credential stores (`Comps`
+  DB row + `secrets/epicor-credentials.json`) that nothing kept in sync — closed, but this is now
+  the **fourth** outage traced to that same two-store split (see
+  `KairosTSApp/docs/incident-2026-08-18-epicor-credentials.md`); (B) a trailing space in
+  `EpicorServerInstance` survived `TrimEnd('/')` and broke every BAQ URL — closed in the data, code
+  fix (`.Trim()`) written but not yet built/deployed; (C) `K_InvcHeadSync` itself returns zero rows
+  even with a valid key and clean URL — not our bug, escalated to Ken to check BAQ Studio. Also
+  surfaced a duplicate-data bug along the way: two `Comps` rows both claimed
+  `ExternalCompanyCode = 'LKHE'` (one real/active, one blank/inactive debris), and credential
+  lookup-by-code has no `IsActive` filter or duplicate guard — editing the wrong (inactive) row via
+  the admin UI was silently ineffective. Full diagnosis:
+  `KairosTSApp/docs/incident-2026-08-24-epicor-comp-duplicate.md` and
+  `docs/sync-baq-notfound-diagnosis.md`.
+- **Email test-mode audit** — prompted by Dyah noticing other companies lacked test mode. Only
+  LKHE was fully configured. LKHPD had `IsTestMode=1` but a blank `TestEmailOverride` — the
+  checkbox looked armed but the redirect-to-internal-testers logic requires both fields, so it was
+  actually inert (no live risk yet, since its SMTP fields were also blank, but a landmine for
+  whenever they're filled in). Fixed to match LKHE. EG/LKHP/TSE/TSPD have no email config row at
+  all yet — sending fails outright rather than reaching a real customer, but the standing rule
+  going forward: whoever configures SMTP for any of these four must set test-mode fields in the
+  *same* save, not as a follow-up. See `capture/2026-08-24_dyah_email-test-mode-audit.md`.
 
 ## Where the source-of-truth docs live
 
