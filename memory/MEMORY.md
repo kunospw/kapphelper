@@ -30,3 +30,4 @@ against.
 - [Docker log timestamps are UTC](feedback_docker-log-timestamps-are-utc.md) — don't build an absolute `--since`/`--until` window from a screenshot's local clock; use a relative window instead.
 - [Undeployed commit missing deploy log line](feedback_undeployed-commit-missing-deploy-log-line.md) — a commit lacking the usual "deployed" line in CHANGELOG/tracker is a sign it was never rebuilt.
 - [Push immediately after tested + working](feedback_push-immediately-after-tested-working.md) — once a change is verified working, commit and push right away, don't batch it with later work.
+- [Explain/checkpoint before implementing when asked](feedback_explain-before-implementing-when-asked.md) — an explicit "create the ticket / explain first, then implement" is a hard checkpoint, not a preference; don't let investigation momentum carry into edits.
