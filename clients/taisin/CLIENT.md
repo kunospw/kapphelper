@@ -20,11 +20,12 @@ SSH alias `tsapp`): **Pilot** (`tsapp-pilot.ksol.ai`, ports 3000/5000) for testi
 (`tsapp.ksol.ai`, ports 3001/5001) for production. Separate DBs, separate secrets — never share
 volumes between them.
 
-## Current phase (as of 2026-08-24)
+## Current phase (as of 2026-09-02)
 
-**Go-live targeted 1 September 2026.** LKHE users first; LKHP onboarding is explicitly gated on
-per-company data isolation actually working (Iwan, 6 Aug meeting — see
-`capture/2026-08-13_iwan_company-access-model.md`).
+**Go-live slipped from 1 Sep to the week of 8 September 2026.** Reason: outstanding issues on the
+Epicor side, still under investigation by Epicor/Ken's team as of 2026-09-02 — not a Kairos-side
+blocker. LKHE users first; LKHP onboarding is explicitly gated on per-company data isolation
+actually working (Iwan, 6 Aug meeting — see `capture/2026-08-13_iwan_company-access-model.md`).
 
 **Both Pilot and Live now run the same code** — Live was rebuilt 2026-08-19/20 after sitting ~3
 weeks (100 commits) behind, catching it up on everything below. Before rebuilding, checked the
