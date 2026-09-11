@@ -2,6 +2,16 @@
 .env
 .env.*
 !.env.example
+!dashboard/.env.sync.example
+!dashboard/.env.gitlog.example
+!dashboard/.env.plane.example
+dashboard/.env.sync
+dashboard/.env.gitlog
+dashboard/.env.plane
+dashboard/public/live/github-activity.json
+dashboard/node_modules/
+dashboard/dist/
+dashboard/node_modules/.vite-temp/
 
 # Runtime artifacts (regenerable)
 artifacts/

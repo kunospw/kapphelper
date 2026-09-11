@@ -1,0 +1,23 @@
+{
+  "name": "kapphelper-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "sync:github": "node --env-file=.env.sync scripts/sync-github.mjs",
+    "sync:tsapp-git": "node --env-file=.env.gitlog scripts/sync-local-git.mjs",
+    "sync:plane": "node --env-file=.env.plane scripts/sync-plane.mjs",
+    "publish:firestore": "node scripts/publish-firestore.mjs"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "firebase": "^12.18.0",
+    "firebase-admin": "^14.3.0",
+    "react": "latest",
+    "react-dom": "latest",
+    "vite": "latest"
+  }
+}
