@@ -14,6 +14,8 @@
 #
 # Deploy types:
 #   - docker           → docker compose stack, target=local or ssh
+#   - systemd          → native process managed by a systemd unit (no container) — restart via
+#                        `sudo systemctl restart <unit>`; same advisory/executed split as docker
 #   - mobile-ios       → Flutter iOS build → App Store Connect (see iOS-Deployment-Guide.md)
 #   - mobile-android   → Android build → Play Store
 #   - not-owned        → we don't touch deploy (someone else owns it)
@@ -78,6 +80,28 @@ meta:
       note: |
         Jesynta runs Claude Code natively on this box — target: local for KConnect projects.
         Dyah SSHes in for cross-check / occasional intervention.
+    kdemoapi01:
+      hostname: cloud2.kairossolutions.co                # DNS entry → routes to `kdemoapi01` box
+      port: 7724
+      linux_hostname: kdemoapi01                          # confirmed 2026-09-17 via ssh (Ubuntu 24.04, kernel 6.8)
+      hosts: [KFMS-Web dispatcher dashboard (docker), KairosWebAPI FMS backend (systemd, not docker)]
+      user: drini
+      docker_access: |
+        User `drini` is NOT in the `docker` group (2026-09-17 verified — group `docker` only
+        contains `kairos`; `docker ps` as drini returns permission denied). Sudo access confirmed
+        present (drini is in `sudo`) but requires a password — cannot run non-interactively from
+        Claude's SSH session. Deploy mode: advisory for KFMS-Web (docker); KairosWebAPI is a
+        systemd unit (`kairoswebapi.service`) restarted via `sudo systemctl restart` — same
+        advisory pattern applies.
+      other_users_on_box: [kairos, mnazmi]                # kapphelper/claude sessions may run under any of these
+      kapphelper_installed: true                          # 2026-09-17 — cloned to ~/klaudecode/kapphelper, bootstrap.sh run clean
+      ssh_config_example: |
+          Host kdemoapi01
+              HostName cloud2.kairossolutions.co
+              User drini
+              Port 7724
+              IdentityFile ~/.ssh/id_ed25519
+              ServerAliveInterval 60
 
   known_credential_leaks:                              # verified committed to git — rotate before any work
     # Values intentionally NOT reproduced here — grep the paths to see them.
@@ -165,6 +189,45 @@ apps:
       compose_file: docker-compose.yml
       services: [kconnect-api, kconnect-frontend-supplier, kconnect-frontend-customer]
       # health: fill in when picked up
+
+  # ── KAppHelper Dashboard — internal team dashboard, born from Ken's 9 Sept ask ──
+  kapphelper:
+    display_name: KAppHelper Dashboard
+    context: apps/kapphelper/APP.md
+    summary: >
+      Internal developer dashboard / knowledge vault for the Custom Apps team — portfolio + health
+      of Kairos apps, action-first Team Meeting view, dev activity from Git + Plane, verified
+      project context/blockers/next actions. Requirements originated from Ken in the 2026-09-09 and
+      2026-09-11 team meetings — see kapphelper memory/project_kapphelper-dashboard-requirements.md.
+      Read-only for risky operations; developers still build/push/deploy themselves.
+    repo:
+      name: kapphelper
+      subpath: [dashboard]
+      remote: https://github.com/kunospw/kapphelper.git
+      branch: main
+    stakeholders:
+      product_owner: Ken Ho
+      devs: [Dyah Puspo Rini]
+      active_dev: Dyah Puspo Rini
+    plane:
+      workspace: kairos
+      project: null                                        # no dedicated Plane project yet
+    stack:
+      frontend: React + Vite
+      backend: Express (dashboard/server/) — JWT auth, no OAuth
+      auth: Registered-dev-email allowlist (DevUser table) + email/password login, JWT access token + DB-backed refresh token
+      data: PostgreSQL via Prisma (migrated off Firebase/Firestore 2026-09-16) — Developer, DevUser, Project, Activity, Action, GithubCommit, GithubPullRequest, PlaneWorkItem, SyncRun tables
+      sync: Node scripts (scripts/sync-*.mjs, merge-activity.mjs) — write to Postgres directly via Prisma, local-only, never in the browser
+    urls:
+      dev: http://127.0.0.1:4174                           # redesign in progress, port 4173 = old layout
+      api_dev: http://127.0.0.1:4175                       # dashboard/server Express API, local dev
+    deploy:
+      type: none                                           # not yet hosted anywhere — Ken asked (11 Sep) to host on an existing app server on a distinct port, access-restricted; not set up yet
+      note: |
+        Local dev only for now: docker-compose.yml in dashboard/ runs Postgres on host port 5433.
+        Secrets (.env.server: DATABASE_URL, JWT_SECRET) live in dashboard/ and are gitignored —
+        never commit them. Real hosting target (VPS or existing app server) not chosen yet; once
+        picked, fill in target/ssh_host/path here same as every other project.
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # EXTERNAL CLIENTS
@@ -329,18 +392,23 @@ clients:
             note: TCS new change
     urls:
       time_entry_api: https://cloud2.kairossolutions.co/kairostimeentry/api
+      kfms_web: https://fms.kairossolutions.co                    # confirmed 2026-09-17 — nginx site on kdemoapi01
+      kfms_api: https://fmsapi.kairossolutions.co                 # confirmed 2026-09-17 — nginx site on kdemoapi01
     deploys:                                               # different deploy targets per repo
-      KairosWeb:
-        type: docker
+      KairosWeb:                                           # FMS branch = KairosWebAPI backend
+        type: systemd                                      # confirmed 2026-09-17 — NOT docker on this box
         target: ssh
-        ssh_host: <verify — different from tsapp; possibly a separate box>
-        path: <need-to-determine>
+        ssh_host: kdemoapi01
+        path: /opt/kairosweb-fms/KairosWebAPI              # source checkout; built output in /opt/kairosweb-fms/publish
+        systemd_unit: kairoswebapi.service
+        deploy_mode: advisory                               # drini not in docker/root — sudo systemctl needs a password
         # ⚠️ Rotate secrets before touching prod
       KFMS-Web:
         type: docker
         target: ssh
-        ssh_host: <need-to-determine>
-        path: <need-to-determine>
+        ssh_host: kdemoapi01
+        path: /opt/KFMS-Web                                 # confirmed 2026-09-17 — has docker-compose.yml + Dockerfile
+        deploy_mode: advisory                               # drini not in docker group on this box
       KFMS-Mobile:
         type: mobile-ios
         target_store: apple-app-store
