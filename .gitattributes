@@ -1,0 +1,6 @@
+# Shell scripts must always be stored (and checked out) with LF line endings —
+# a CRLF shell script fails on Linux/macOS with "bash^M: command not found" or
+# similar, since the shebang line becomes unparseable. This bit a real install
+# on 2026-09-18 (bootstrap.sh copied off a Windows disk via scp, bypassing
+# git's own CRLF normalization, which only kicks in on checkout/commit).
+*.sh text eol=lf

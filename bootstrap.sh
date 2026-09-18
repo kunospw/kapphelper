@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# bootstrap.sh — one-time setup for kapphelper on a Linux host
+# bootstrap.sh — one-time setup for kapphelper on a Linux or macOS host
 #
 # Usage:
 #   cd ~/klaudecode/kapphelper
 #   ./bootstrap.sh
 #
 # Idempotent — safe to re-run. Does NOT install claude, docker, or git; verifies they exist.
+# Docker is only needed on hosts that run docker-based deploys (see projects.yaml) — a
+# mobile-build-only Mac (Xcode/fastlane, no containers) is expected to be missing it.
 
 set -euo pipefail
 
@@ -27,24 +29,33 @@ if [[ "$PARENT_DIR" != "$expected_parent" ]]; then
 fi
 
 # ── 2. Check required tools ──────────────────────────────────────────────────
-missing=()
-for tool in git docker; do
-  if ! command -v "$tool" >/dev/null 2>&1; then
-    missing+=("$tool")
-  fi
-done
-
-# docker compose can be v1 (`docker-compose`) or v2 plugin (`docker compose`)
-if ! docker compose version >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1; then
-  missing+=("docker-compose")
-fi
-
-if [[ ${#missing[@]} -gt 0 ]]; then
-  echo "❌ Missing tools: ${missing[*]}"
-  echo "   Install them, then re-run this script."
+# git is hard-required everywhere. docker/docker-compose are only required on
+# hosts that actually run docker-based deploys — soft-warn instead of failing,
+# so a mobile-build-only Mac (Xcode/fastlane) can still bootstrap cleanly.
+if ! command -v git >/dev/null 2>&1; then
+  echo "❌ Missing tool: git"
+  echo "   Install it, then re-run this script."
   exit 1
 fi
-echo "✓ git, docker, docker compose present"
+echo "✓ git present"
+
+docker_missing=()
+for tool in docker; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    docker_missing+=("$tool")
+  fi
+done
+if ! docker compose version >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1; then
+  docker_missing+=("docker-compose")
+fi
+
+if [[ ${#docker_missing[@]} -gt 0 ]]; then
+  echo "⚠️  Docker not found (${docker_missing[*]}) — fine if this host only does mobile"
+  echo "   builds or other non-docker work; skills targeting a docker deploy (see"
+  echo "   projects.yaml deploy.type: docker) won't work here until it's installed."
+else
+  echo "✓ docker, docker compose present"
+fi
 
 # ── 3. Check claude CLI (soft — don't fail if missing) ───────────────────────
 if command -v claude >/dev/null 2>&1; then
