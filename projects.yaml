@@ -41,8 +41,10 @@ meta:
   updated: 2026-08-12
   version: 1
   github_org: Kairos-Business-Solutions
-  credentials_ref: "D:/Dee's archivest/projects/Kairos/Kairos_Projects_Overview.docx"    # local-only
-  mobile_deploy_guide: "D:/Dee's archivest/projects/Kairos/iOS-Deployment-Guide.md"
+  # Pointers only — neither file lives in this repo and neither path is machine-specific.
+  # Ask Ken/Dyah for the current copy; never paste values from them into git or an AI chat.
+  credentials_ref: "Kairos_Projects_Overview.docx — kept outside git (ask Ken or Dyah); real values live in each dev's private notes"
+  mobile_deploy_guide: "iOS-Deployment-Guide.md — kept outside git (ask Ken or Dyah for the current copy)"
 
   # SSH aliases used across projects. Each dev configures these in their OWN
   # ~/.ssh/config with their OWN user + identity file. This block documents
