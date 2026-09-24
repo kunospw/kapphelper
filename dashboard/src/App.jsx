@@ -103,7 +103,7 @@ function App() {
             )}
 
             {view === 'integrations' && (
-              <IntegrationsView snapshotDate={data?.generatedAt} source={source} />
+              <IntegrationsView snapshotDate={data?.generatedAt} source={source} github={data?.github} plane={data?.plane} runs={data?.runs} planeWriteMode={data?.planeWriteMode} />
             )}
           </>
         )}

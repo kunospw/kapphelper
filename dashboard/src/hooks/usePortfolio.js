@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '../lib/api.js';
+import { formatDateTime } from '../lib/format.js';
 
 const SOURCE = {
   kind: 'snapshot',
@@ -27,10 +28,10 @@ export function usePortfolio(user) {
       if (!portfolio) throw new Error('No dashboard snapshot has been published yet. Run the publish command first.');
       setState({
         status: 'ready',
-        data: { ...portfolio, github: syncStatus.github, plane: syncStatus.plane },
+        data: { ...portfolio, github: syncStatus.github, plane: syncStatus.plane, runs: syncStatus.runs ?? {} },
         error: null,
         source: syncStatus.github?.generatedAt || syncStatus.plane?.generatedAt
-          ? { kind: 'partial-live', label: 'KAppHelper snapshot + connected sources', detail: `Git: ${syncStatus.github?.generatedAt ?? 'not connected'} · Plane: ${syncStatus.plane?.generatedAt ?? 'not connected'} · SharePoint is not connected yet.` }
+          ? { kind: 'partial-live', label: 'KAppHelper snapshot + connected sources', detail: `Git: ${syncStatus.github?.generatedAt ? formatDateTime(syncStatus.github.generatedAt) : 'not connected'} · Plane: ${syncStatus.plane?.generatedAt ? formatDateTime(syncStatus.plane.generatedAt) : 'not connected'} · SharePoint is not connected yet.` }
           : SOURCE,
       });
     }

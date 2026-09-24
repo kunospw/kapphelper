@@ -144,7 +144,7 @@ portfolioRouter.get('/portfolio', async (req, res) => {
 });
 
 portfolioRouter.get('/sync-status', async (_req, res) => {
-  const sources = ['local-git', 'github', 'plane', 'portfolio'];
+  const sources = ['local-git', 'github', 'plane', 'portfolio', 'captures'];
   const latest = await Promise.all(
     sources.map((source) => prisma.syncRun.findFirst({ where: { source }, orderBy: { refreshedAt: 'desc' } })),
   );
