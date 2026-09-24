@@ -1,10 +1,11 @@
-# bootstrap.ps1 — one-time setup for kapphelper on a Windows host
+# bootstrap.ps1 - one-time setup for kapphelper on a Windows host
 #
 # Usage:
 #   cd $HOME\klaudecode\kapphelper
 #   .\bootstrap.ps1
 #
-# Idempotent — safe to re-run. Does NOT install claude, docker, or git; verifies they exist.
+# Idempotent - safe to re-run. Does NOT install claude, docker, or git; verifies they exist.
+# git is required; docker is only needed on machines that run docker-based deploys (soft check).
 
 $ErrorActionPreference = 'Stop'
 
@@ -26,31 +27,39 @@ if ($ParentDir -ne $expectedParent) {
 }
 
 # --- 2. Check required tools ------------------------------------------------
-$missing = @()
-foreach ($tool in 'git', 'docker') {
-    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
-        $missing += $tool
-    }
-}
-
-# docker compose v2 plugin
-$composeOK = $false
-try {
-    & docker compose version 2>$null | Out-Null
-    if ($LASTEXITCODE -eq 0) { $composeOK = $true }
-} catch {}
-if (-not $composeOK) {
-    if (-not (Get-Command docker-compose -ErrorAction SilentlyContinue)) {
-        $missing += 'docker-compose'
-    }
-}
-
-if ($missing.Count -gt 0) {
-    Write-Host "X Missing tools: $($missing -join ', ')"
-    Write-Host "  Install them, then re-run this script."
+# git is hard-required everywhere. docker/docker-compose are only required on hosts that
+# actually run docker-based deploys - soft-warn instead of failing, so a developer machine
+# without Docker (e.g. one that only edits captures/memory or uses a native Postgres) can
+# still bootstrap cleanly. Mirrors bootstrap.sh.
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Host "X Missing tool: git"
+    Write-Host "  Install it, then re-run this script."
     exit 1
 }
-Write-Host "OK git, docker, docker compose present"
+Write-Host "OK git present"
+
+$dockerMissing = @()
+if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+    $dockerMissing += 'docker'
+} else {
+    # docker compose v2 plugin (only probe it when docker itself exists)
+    $composeOK = $false
+    try {
+        & docker compose version 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) { $composeOK = $true }
+    } catch {}
+    if (-not $composeOK -and -not (Get-Command docker-compose -ErrorAction SilentlyContinue)) {
+        $dockerMissing += 'docker-compose'
+    }
+}
+
+if ($dockerMissing.Count -gt 0) {
+    Write-Host "!  Docker not found ($($dockerMissing -join ', ')) - fine if this machine only does"
+    Write-Host "   captures/memory or other non-docker work; skills targeting a docker deploy (see"
+    Write-Host "   projects.yaml deploy.type: docker) won't work here until it's installed."
+} else {
+    Write-Host "OK docker, docker compose present"
+}
 
 # --- 3. Check claude CLI (soft) ---------------------------------------------
 if (Get-Command claude -ErrorAction SilentlyContinue) {
@@ -59,7 +68,7 @@ if (Get-Command claude -ErrorAction SilentlyContinue) {
     if (-not $ver) { $ver = 'version unknown' }
     Write-Host "OK claude CLI present ($ver)"
 } else {
-    Write-Host "!  claude CLI not found — install per your Claude Code onboarding."
+    Write-Host "!  claude CLI not found - install per your Claude Code onboarding."
 }
 
 # --- 4. Verify we're in a git checkout --------------------------------------
@@ -88,13 +97,13 @@ $envExample  = Join-Path $RepoDir '.env.example'
 if (Test-Path $envFile) {
     Write-Host "OK .env present"
 } elseif (Test-Path $envExample) {
-    Write-Host "!  .env not found — copy .env.example and fill in real values:"
+    Write-Host "!  .env not found - copy .env.example and fill in real values:"
     Write-Host "     Copy-Item $envExample $envFile"
 } else {
-    Write-Host "  (no .env.example yet — will be added when a skill first needs secrets)"
+    Write-Host "  (no .env.example yet - will be added when a skill first needs secrets)"
 }
 
-# --- 8. Sanity — list registered projects -----------------------------------
+# --- 8. Sanity - list registered projects -----------------------------------
 $projectsFile = Join-Path $RepoDir 'projects.yaml'
 if (Test-Path $projectsFile) {
     Write-Host ""
@@ -106,4 +115,4 @@ if (Test-Path $projectsFile) {
 
 Write-Host ""
 Write-Host "OK bootstrap done."
-Write-Host "  Next: start a claude session here — the session-start skill will run automatically."
+Write-Host "  Next: start a claude session here - the session-start skill will run automatically."
