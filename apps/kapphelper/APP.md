@@ -13,7 +13,9 @@ An internal developer dashboard / knowledge vault for the Custom Apps team: port
 Kairos apps, an action-first "Team Meeting" view, developer activity sourced from Git commits and
 Plane work items, verified project context/blockers/next actions, and (planned) server-side AI
 summaries. It must stay read-only for anything risky — builds, pushes, deploys, store uploads, and
-DB changes remain manual, done by developers themselves.
+DB changes remain manual, done by developers themselves. **One deliberate exception (2026-09-24):**
+*Mark done* — audited, confirm-first, and only written back to Plane when `PLANE_WRITE_ENABLED=true`
+(see `dashboard/README.md`).
 
 React + Vite frontend, talking to a small Express API (`dashboard/server/`) backed by
 **PostgreSQL** via Prisma (migrated off Firebase 2026-09-16 — Postgres fits the rest of the Kairos
@@ -85,7 +87,7 @@ terse — detail on demand, not walls of text.
 10. Server-side Ollama/DeepSeek summary service once Ken supplies API details — never called
     directly from the browser; key stored server-side only. `server/src/index.js` already has a
     comment marking where this route mounts.
-11. Replace the "hide today's Plane items" presentation hack with a user-controlled date filter.
+11. ~~Replace the "hide today's Plane items" presentation hack~~ — no longer exists in the code (verified 2026-09-24).
 
 ## Deploy
 

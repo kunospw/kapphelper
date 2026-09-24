@@ -218,6 +218,10 @@ kasar untuk 1 developer (Dyah) paruh waktu; sesuaikan.
 
 - **Role**: tambah `role` (`pm | lead | dev`) di `DevUser`; dev hanya lihat kartunya sendiri
   + portfolio, PM/lead lihat semua. Catatan 1:1 (jika ada) privat per PM.
+- **Mark done — selesai 2026-09-24**: tombol ✓ Done di board (item Plane dan item manual), tercatat
+  siapa/kapan/catatan (`ActionCompletion`); untuk Plane, status *Done* ikut ditulis balik ke Plane bila
+  `PLANE_WRITE_ENABLED=true` (default mati; ada mode dry-run). Ini satu-satunya penulisan dashboard
+  ke sistem sumber; prinsip "human approval" dipenuhi lewat panel konfirmasi.
 - **Halaman Workload** per developer, semua dihitung dengan kode (deterministik):
   item Plane per state; **umur di state** (hari sejak `updatedAt`); item lewat
   `targetDate`; jumlah WIP; commit terakhir; handover/capture terakhir; flag

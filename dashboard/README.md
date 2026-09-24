@@ -24,7 +24,7 @@ npm run db:migrate
 npm run add-dev-user -- "you@kairossolutions.co" "Your Name"   # prints a one-time password
 ```
 
-Then, in two terminals:
+Requires Node 22.9+ (uses `--env-file-if-exists`). Then, in two terminals:
 
 ```bash
 npm run server   # Express API on :4175
@@ -66,6 +66,39 @@ The dashboard reads from these systems and never becomes an alternate source:
 | SharePoint | Meeting notes, onboarding, test artefacts, reference docs. |
 | Dashboard | Read-friendly view, freshness signals, source citations. |
 
+## Mark done (update + sync back to the source)
+
+Every action on the Team meeting board has a **✓ Done** button (and a *Completed* group for the
+last 30 days). Pressing it opens a confirm panel with an optional note, then:
+
+| Item | What happens |
+|---|---|
+| **Plane work item** | Recorded in the dashboard (`ActionCompletion`: your email, time, note) **and**, when write-back is enabled, the item is moved to the project's *Done* state in Plane. The local Plane mirror is updated immediately; the next sync confirms it. |
+| **Hand-written action** (from `portfolio.json`) | Recorded in the dashboard only — the seed file is not rewritten, and the completion survives every `publish-portfolio` run. |
+
+Write-back to Plane is **off by default**. Add to `.env.server` (gitignored), then restart `npm run server`:
+
+```bash
+PLANE_WRITE_ENABLED=true
+PLANE_WRITE_DRY_RUN=true    # step 1: resolves the endpoint + "Done" state, changes nothing in Plane
+# PLANE_WRITE_DRY_RUN=false # step 2: really write (remove the dry-run line or set false)
+```
+
+It reads `PLANE_BASE_URL` / `PLANE_WORKSPACE` / `PLANE_PROJECT_ID` from `.env.plane` and the token from
+`PLANE_WRITE_TOKEN_PATH` (default: the same token file the sync uses). The Plane user behind that
+token must be allowed to edit work items — otherwise Plane answers 403 and the completion is kept
+locally with the reason shown ("Plane was not changed — …") and a **Retry Plane update** link.
+
+Behaviour worth knowing:
+- **Plane failures never lose a completion.** It is stored first; the Plane result is recorded on it.
+- **Reopen** works for anything not yet written to Plane. Once Plane itself was changed, reopen it in
+  Plane — it returns here on the next sync.
+- If a Plane item is edited *after* it was marked done here and is open again in Plane, the board
+  shows it open again (Plane wins).
+- The write is exactly one operation (set state → completed) on one work item. The token never reaches
+  the browser and never appears in an error message.
+- Tests: `npm test` (Plane client against a fake fetch — no network).
+
 ## Freshness
 
 Every row/card shows how long ago its "last confirmed" date was. Colour tones:
@@ -83,8 +116,8 @@ Stale does not mean stalled; it means the record has not been re-verified.
   GitHub App activity, and read-only Tai Sin Plane work-item sync are implemented.
 - SharePoint/documentation ingestion, scheduled refresh, and evidence-based AI
   recommendations are planned next; see the implementation plan above.
-- Any deploy, build, store upload, database mutation, or Plane mutation flow
-  remains deliberately outside the dashboard.
+- Deploy, build, store-upload and database-mutation flows remain deliberately outside the
+  dashboard. The only write it performs is **Mark done** (see below).
 
 ## Code layout
 
@@ -194,5 +227,6 @@ summary (status, assignee, priority, target date, and update time) into the
 
 - No `.env`, tokens, keys, keystores, passwords, or connection strings are
   loaded, displayed, indexed, cached, or committed.
-- No deploy, database, store-upload, or Plane mutation actions exist.
+- No deploy, database, or store-upload actions exist. The one write is **Mark done**: audited
+  (who/when/note), confirm-first, and it changes Plane only when write-back is explicitly enabled.
 - AI recommendations remain unbuilt until they can cite evidence and freshness.
