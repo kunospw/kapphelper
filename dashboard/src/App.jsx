@@ -83,7 +83,7 @@ function App() {
         {status === 'ready' && (
           <>
             {view === 'meeting' && (
-              <MeetingView projects={filtered} developers={data?.developerActivity ?? []} githubConnected={Boolean(data?.github?.generatedAt)} planeConnected={Boolean(data?.plane?.generatedAt)} onOpenProject={openProject} currentDeveloperId={auth.user?.developerId} query={query} planeWriteMode={data?.planeWriteMode} onChanged={reload} />
+              <MeetingView projects={filtered} developers={data?.developerActivity ?? []} githubConnected={Boolean(data?.github?.generatedAt)} planeConnected={Boolean(data?.plane?.generatedAt)} onOpenProject={openProject} currentDeveloperId={auth.user?.developerId} query={query} planeWriteMode={data?.planeWriteMode} signals={data?.signals} onChanged={reload} />
             )}
 
             {view === 'portfolio' && (

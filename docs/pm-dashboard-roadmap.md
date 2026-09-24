@@ -225,6 +225,10 @@ kasar untuk 1 developer (Dyah) paruh waktu; sesuaikan.
   siapa/kapan/catatan (`ActionCompletion`); untuk Plane, status *Done* ikut ditulis balik ke Plane bila
   `PLANE_WRITE_ENABLED=true` (default mati; ada mode dry-run). Ini satu-satunya penulisan dashboard
   ke sistem sumber; prinsip "human approval" dipenuhi lewat panel konfirmasi.
+- **"Needs attention" — selesai 2026-09-24** (`server/src/signals.js`): sinyal berbasis aturan
+  (blocked, tanpa owner/milestone, tidak diperbarui, item Plane lewat target / macet, developer tanpa
+  aktivitas, sync lama), dikelompokkan per project/orang, tiap baris bertaut ke sumbernya. Ini lapisan
+  aturan yang akan dibaca AI (Fase D).
 - **Halaman Workload** per developer, semua dihitung dengan kode (deterministik):
   item Plane per state; **umur di state** (hari sejak `updatedAt`); item lewat
   `targetDate`; jumlah WIP; commit terakhir; handover/capture terakhir; flag

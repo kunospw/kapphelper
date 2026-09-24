@@ -3,6 +3,7 @@ import cors from 'cors';
 import { authRouter } from './routes/auth.js';
 import { portfolioRouter } from './routes/portfolio.js';
 import { actionsRouter } from './routes/actions.js';
+import { signalsRouter } from './routes/signals.js';
 import { requireAuth } from './auth/middleware.js';
 import { startSyncScheduler } from './sync-scheduler.js';
 
@@ -17,6 +18,7 @@ app.use(express.json());
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRouter);
 app.use('/api/actions', requireAuth, actionsRouter);
+app.use('/api/signals', requireAuth, signalsRouter);
 app.use('/api', requireAuth, portfolioRouter);
 
 // Future: a server-side-only Ollama/DeepSeek summary endpoint mounts here

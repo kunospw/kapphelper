@@ -66,6 +66,27 @@ The dashboard reads from these systems and never becomes an alternate source:
 | SharePoint | Meeting notes, onboarding, test artefacts, reference docs. |
 | Dashboard | Read-friendly view, freshness signals, source citations. |
 
+## Needs attention (rule-based signals)
+
+The Team meeting page opens with a **Needs attention** panel: what is wrong, how we know, and who it
+concerns. It is computed with plain rules from the synced data on every load (`server/src/signals.js`,
+`GET /api/signals`) — **not AI** — and every line links back to its record. Grouped per project / person; the
+most urgent group starts open; picking a person on the board filters it to them.
+
+| Signal | Fires when | Severity |
+|---|---|---|
+| Blocked | project status is *Release blocked* (shows the recorded blocker) | high |
+| No owner / No milestone | no confirmed developer / no next milestone (skipped for paused projects) | high (active) · medium |
+| Not re-confirmed | last confirmed > 10 days ago | medium · high above 21 days |
+| Overdue | open Plane item past its target date | medium · high after 7 days |
+| Stalled | *In Progress* with no update for > 7 days | medium |
+| Unassigned | urgent/high Plane item with no assignee | high · medium |
+| No activity | developer has no recorded activity for > 5 days (a prompt to ask; says so when no connected source covers them) | medium |
+| Sync old | a source not synced for > 3 hours | low · medium after a day |
+
+Items marked done in the dashboard are skipped. Thresholds live in one place (`THRESHOLDS`) and are returned
+by the API. These signals are also the measured-facts layer the future AI advisor will read.
+
 ## Mark done (update + sync back to the source)
 
 Every action on the Team meeting board has a **✓ Done** button (and a *Completed* group for the

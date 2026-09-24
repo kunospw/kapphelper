@@ -4,6 +4,7 @@ import { STATUS_BUCKETS, groupByBucket } from '../lib/status.js';
 import { describeFreshness } from '../lib/freshness.js';
 import { meetingRowFor } from '../lib/meeting.js';
 import { EmptyState, FreshnessBadge, Status } from './primitives.jsx';
+import { SignalsPanel } from './SignalsPanel.jsx';
 
 // Plane (Backlog/Todo/In Progress) and hand-written meeting actions (Open /
 // Needs verification / Needs update) use different words for the same idea —
@@ -203,7 +204,7 @@ function MeetingRow({ project, onOpenProject }) {
   );
 }
 
-export function MeetingView({ projects, developers, githubConnected, planeConnected, onOpenProject, currentDeveloperId, query = '', planeWriteMode = 'disabled', onChanged }) {
+export function MeetingView({ projects, developers, githubConnected, planeConnected, onOpenProject, currentDeveloperId, query = '', planeWriteMode = 'disabled', signals, onChanged }) {
   const [chosenPersonId, setChosenPersonId] = useState(null);
   const [confirming, setConfirming] = useState(null);
   const [busyKey, setBusyKey] = useState(null);
@@ -338,6 +339,8 @@ export function MeetingView({ projects, developers, githubConnected, planeConnec
           </button>
         ))}
       </nav>
+
+      <SignalsPanel data={signals} personId={personId} personName={person.isAll ? undefined : person.name} />
 
       <div className="ab-stats">
         {grouped.map(({ group, items }) => (

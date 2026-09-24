@@ -21,14 +21,15 @@ export function usePortfolio(user) {
 
   useEffect(() => {
     async function load() {
-      const [portfolio, syncStatus] = await Promise.all([
+      const [portfolio, syncStatus, signals] = await Promise.all([
         apiFetch('/api/portfolio'),
         apiFetch('/api/sync-status'),
+        apiFetch('/api/signals').catch(() => null), // optional: a failure here must not take the board down
       ]);
       if (!portfolio) throw new Error('No dashboard snapshot has been published yet. Run the publish command first.');
       setState({
         status: 'ready',
-        data: { ...portfolio, github: syncStatus.github, plane: syncStatus.plane, runs: syncStatus.runs ?? {} },
+        data: { ...portfolio, github: syncStatus.github, plane: syncStatus.plane, runs: syncStatus.runs ?? {}, signals },
         error: null,
         source: syncStatus.github?.generatedAt || syncStatus.plane?.generatedAt
           ? { kind: 'partial-live', label: 'KAppHelper snapshot + connected sources', detail: `Git: ${syncStatus.github?.generatedAt ? formatDateTime(syncStatus.github.generatedAt) : 'not connected'} · Plane: ${syncStatus.plane?.generatedAt ? formatDateTime(syncStatus.plane.generatedAt) : 'not connected'} · SharePoint is not connected yet.` }
