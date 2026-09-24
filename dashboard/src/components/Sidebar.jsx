@@ -62,8 +62,8 @@ export function Sidebar({ projects, view, onChangeView, selectedId, onSelectProj
       </div>
 
       <div className="sidebar-footer">
-        <span className="pill pill-read-only">Read only</span>
-        <p>Snapshot data. No secrets, no deploy actions, no Plane writes.</p>
+        <span className="pill pill-read-only">Read + mark done</span>
+        <p>No secrets, no deploys. The only write is marking an action done (audited); Plane is updated only when write-back is enabled.</p>
       </div>
     </aside>
   );

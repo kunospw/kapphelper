@@ -20,7 +20,7 @@ function filterProjects(projects, query) {
 
 function App() {
   const auth = useAuth();
-  const { status, data, error, source } = usePortfolio(auth.user);
+  const { status, data, error, source, reload } = usePortfolio(auth.user);
   const [view, setView] = useState(DEFAULT_VIEW);
   const [selectedId, setSelectedId] = useState('');
   const [query, setQuery] = useState('');
@@ -83,7 +83,7 @@ function App() {
         {status === 'ready' && (
           <>
             {view === 'meeting' && (
-              <MeetingView projects={filtered} developers={data?.developerActivity ?? []} githubConnected={Boolean(data?.github?.generatedAt)} planeConnected={Boolean(data?.plane?.generatedAt)} onOpenProject={openProject} currentDeveloperId={auth.user?.developerId} query={query} />
+              <MeetingView projects={filtered} developers={data?.developerActivity ?? []} githubConnected={Boolean(data?.github?.generatedAt)} planeConnected={Boolean(data?.plane?.generatedAt)} onOpenProject={openProject} currentDeveloperId={auth.user?.developerId} query={query} planeWriteMode={data?.planeWriteMode} onChanged={reload} />
             )}
 
             {view === 'portfolio' && (

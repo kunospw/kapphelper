@@ -46,7 +46,8 @@ function ActivityTimeline({ activities }) {
   </ol>;
 }
 
-function ActionList({ actions }) {
+function ActionList({ actions: allActions }) {
+  const actions = allActions?.filter((action) => !action.completed);
   if (!actions?.length) return <EmptyState title="No open action recorded" message="This does not mean there is no work; it means the snapshot has no verified action list yet." />;
   const sortedActions = [...actions].sort((left, right) => {
     const leftDate = left.createdAt ? new Date(left.createdAt).getTime() : -Infinity;

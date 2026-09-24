@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { apiFetch } from '../lib/api.js';
 import { STATUS_BUCKETS, groupByBucket } from '../lib/status.js';
 import { describeFreshness } from '../lib/freshness.js';
 import { meetingRowFor } from '../lib/meeting.js';
@@ -12,6 +13,7 @@ const GROUPS = [
   { id: 'progress', label: 'In progress', hint: 'Being worked on now.', tone: 'active' },
   { id: 'next', label: 'Up next', hint: 'Committed, not started yet.', tone: 'next' },
   { id: 'backlog', label: 'Backlog', hint: 'Not scheduled — skim only if there is time.', tone: 'paused', collapsed: true },
+  { id: 'done', label: 'Completed', hint: 'Marked done in the last 30 days — who, when, and whether Plane was updated.', tone: 'paused', collapsed: true },
 ];
 
 function groupFor(status = '') {
@@ -74,39 +76,78 @@ function Avatar({ name, size = 'md' }) {
   return <span className={`ab-avatar ab-avatar-${size}`} aria-hidden="true">{initials(name)}</span>;
 }
 
-function ActionItem({ action, open, onToggle, showOwner, onOpenProject, projects }) {
+function planeCopy(mode) {
+  if (mode === 'live') return 'This will also set the item to Done in Plane.';
+  if (mode === 'dry-run') return 'Plane write-back is in dry-run: Plane will NOT be changed.';
+  return 'Plane write-back is off: this is recorded in the dashboard only and Plane will not change.';
+}
+
+function ActionItem({ action, open, onToggle, showOwner, onOpenProject, projects, planeWriteMode, confirming, busyKey, onAskDone, onCancel, onConfirmDone, onReopen, onRetry }) {
+  const [note, setNote] = useState('');
   const { key, fullKey, name } = splitTitle(action.title);
   const priority = PRIORITY[action.priority];
   const stamp = timestampOf(action);
   const due = meaningfulDue(action.due);
   const project = projects.find((item) => item.name === action.project);
+  const done = action.completed;
+  const busy = busyKey === action.key;
+  const planeLinked = Boolean(action.key?.startsWith('plane:'));
 
   return (
-    <li className={`ab-item ${open ? 'is-open' : ''}`}>
-      <button type="button" className="ab-row" aria-expanded={open} onClick={onToggle}>
-        <span className={`ab-priority ab-priority-${action.priority ?? 'none'}`} title={priority ? `${priority.label} priority` : 'No priority recorded'}>
-          {priority ? priority.label : '—'}
-        </span>
-        <span className="ab-main">
-          <span className="ab-title">
-            {key && <span className="ab-key" title={fullKey}>{key}</span>}
-            {name}
+    <li className={`ab-item ${open ? 'is-open' : ''} ${done ? 'is-done' : ''}`}>
+      <div className="ab-line">
+        <button type="button" className="ab-row" aria-expanded={open} onClick={onToggle}>
+          <span className={`ab-priority ab-priority-${action.priority ?? 'none'}`} title={priority ? `${priority.label} priority` : 'No priority recorded'}>
+            {priority ? priority.label : '—'}
           </span>
-          <span className="ab-meta">
-            <span>{action.project ?? 'No project'}</span>
-            <span className="ab-status-text">{action.status ?? 'Open'}</span>
-            {stamp && <span title={absoluteTime(stamp)}>Updated {relativeTime(stamp)}</span>}
-            {due && <span className="ab-due">Due: {due}</span>}
+          <span className="ab-main">
+            <span className="ab-title">
+              {key && <span className="ab-key" title={fullKey}>{key}</span>}
+              {name}
+            </span>
+            <span className="ab-meta">
+              <span>{action.project ?? 'No project'}</span>
+              <span className="ab-status-text">{action.status ?? 'Open'}</span>
+              {done
+                ? <span title={absoluteTime(done.at)}>Done {relativeTime(done.at)} by {done.by}</span>
+                : stamp && <span title={absoluteTime(stamp)}>Updated {relativeTime(stamp)}</span>}
+              {due && !done && <span className="ab-due">Due: {due}</span>}
+            </span>
           </span>
-        </span>
-        {showOwner && (
-          <span className="ab-owner"><Avatar name={action.owner} size="sm" /><span>{action.owner}</span></span>
+          {showOwner && (
+            <span className="ab-owner"><Avatar name={action.owner} size="sm" /><span>{action.owner}</span></span>
+          )}
+          <span className="ab-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
+        </button>
+        {!done && action.key && (
+          <button type="button" className="ab-quick-done" aria-label={`Mark done: ${name}`} title="Mark done" onClick={onAskDone}>✓ Done</button>
         )}
-        <span className="ab-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
-      </button>
+      </div>
+
+      {confirming && !done && (
+        <div className="ab-confirm" role="group" aria-label="Confirm mark done">
+          <p><strong>Mark “{name}” as done?</strong> {planeLinked ? planeCopy(planeWriteMode) : 'It is recorded in the dashboard with your name and the time.'}</p>
+          <label>Note (optional)
+            <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="e.g. merged and verified on Pilot" />
+          </label>
+          <div className="ab-confirm-actions">
+            <button type="button" className="ab-btn ab-btn-primary" disabled={busy} onClick={() => onConfirmDone(note)}>{busy ? 'Saving…' : 'Confirm done'}</button>
+            <button type="button" className="ab-btn" disabled={busy} onClick={onCancel}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       {open && (
         <div className="ab-detail">
           <p>{action.detail ?? 'No additional detail recorded for this action.'}</p>
+          {done && (
+            <p className="ab-done-note">
+              Done by <strong>{done.by}</strong> · {absoluteTime(done.at)}{done.note ? ` — “${done.note}”` : ''}.{' '}
+              {planeLinked
+                ? (done.planeSynced ? 'Plane: set to Done ✓' : `Plane was not changed — ${done.planeError ?? 'reason unknown'}`)
+                : 'Recorded in the dashboard.'}
+            </p>
+          )}
           <dl>
             <div><dt>Status</dt><dd>{action.status ?? 'Not recorded'}</dd></div>
             <div><dt>Priority</dt><dd>{priority?.label ?? 'Not recorded'}</dd></div>
@@ -115,7 +156,11 @@ function ActionItem({ action, open, onToggle, showOwner, onOpenProject, projects
             <div><dt>Last updated</dt><dd>{stamp ? absoluteTime(stamp) : 'Not recorded'}</dd></div>
             <div><dt>Due</dt><dd>{due ?? 'No date recorded'}</dd></div>
           </dl>
-          {project && <button type="button" className="ab-link" onClick={() => onOpenProject(project.id)}>Open {project.name} context →</button>}
+          <div className="ab-detail-actions">
+            {project && <button type="button" className="ab-link" onClick={() => onOpenProject(project.id)}>Open {project.name} context →</button>}
+            {done && planeLinked && !done.planeSynced && <button type="button" className="ab-link" disabled={busy} onClick={onRetry}>Retry Plane update</button>}
+            {done && !done.planeSynced && <button type="button" className="ab-link" disabled={busy} onClick={onReopen}>Reopen</button>}
+          </div>
         </div>
       )}
     </li>
@@ -155,8 +200,11 @@ function MeetingRow({ project, onOpenProject }) {
   );
 }
 
-export function MeetingView({ projects, developers, githubConnected, planeConnected, onOpenProject, currentDeveloperId, query = '' }) {
+export function MeetingView({ projects, developers, githubConnected, planeConnected, onOpenProject, currentDeveloperId, query = '', planeWriteMode = 'disabled', onChanged }) {
   const [chosenPersonId, setChosenPersonId] = useState(null);
+  const [confirming, setConfirming] = useState(null);
+  const [busyKey, setBusyKey] = useState(null);
+  const [notice, setNotice] = useState(null);
   const [expanded, setExpanded] = useState(null);
   const [openGroups, setOpenGroups] = useState(() => new Set(GROUPS.filter((g) => !g.collapsed).map((g) => g.id)));
   const [showContext, setShowContext] = useState(false);
@@ -169,10 +217,10 @@ export function MeetingView({ projects, developers, githubConnected, planeConnec
     owner: action.owner ?? developer.name,
     _id: `${developer.id}-${index}-${action.title}`,
     _developerId: developer.id,
-    _group: groupFor(action.status),
+    _group: action.completed ? 'done' : groupFor(action.status),
   }))), [developers]);
 
-  const activeCount = (list) => list.filter((a) => a._group !== 'backlog').length;
+  const activeCount = (list) => list.filter((a) => a._group !== 'backlog' && a._group !== 'done').length;
 
   const people = useMemo(() => {
     const withWork = developers
@@ -191,14 +239,49 @@ export function MeetingView({ projects, developers, githubConnected, planeConnec
     group,
     items: personActions
       .filter((a) => a._group === group.id)
-      .sort((a, b) => ((PRIORITY[a.priority]?.rank ?? 9) - (PRIORITY[b.priority]?.rank ?? 9))
-        || String(timestampOf(b) ?? '').localeCompare(String(timestampOf(a) ?? ''))),
+      .sort((a, b) => (group.id === 'done'
+        ? String(b.completed?.at ?? '').localeCompare(String(a.completed?.at ?? ''))
+        : ((PRIORITY[a.priority]?.rank ?? 9) - (PRIORITY[b.priority]?.rank ?? 9))
+          || String(timestampOf(b) ?? '').localeCompare(String(timestampOf(a) ?? '')))),
   })), [personActions]);
 
   const person = people.find((p) => p.id === personId) ?? people[people.length - 1];
   const showOwner = personId === 'all';
   const projectGroups = useMemo(() => groupByBucket(projects), [projects]);
   const projectsNeedingAttention = projects.filter((p) => STATUS_BUCKETS[0].match(p.status) || STATUS_BUCKETS[1].match(p.status)).length;
+
+
+  // Every write goes through the API, which records who did it; the board then reloads so what
+  // is shown is what the server holds, not an optimistic guess.
+  const submit = async (action, path, body, describe) => {
+    setBusyKey(action.key);
+    setNotice(null);
+    try {
+      const response = await apiFetch(path, { method: 'POST', body });
+      setNotice(describe(response));
+      setConfirming(null);
+      await onChanged?.();
+    } catch (error) {
+      setNotice({ tone: 'error', text: error.message || 'That did not work. Nothing was changed.' });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const confirmDone = (action, note) => submit(action, '/api/actions/complete', { key: action.key, note }, ({ completion, alreadyDone }) => {
+    const shortName = splitTitle(action.title).name;
+    if (alreadyDone) return { tone: 'info', text: `“${shortName}” was already marked done.` };
+    if (!action.key.startsWith('plane:')) return { tone: 'ok', text: `Marked done: “${shortName}”.` };
+    return completion.planeSynced
+      ? { tone: 'ok', text: `Marked done and set to Done in Plane: “${shortName}”.` }
+      : { tone: 'warn', text: `Marked done in the dashboard only — Plane was not changed. ${completion.planeError ?? ''}`.trim() };
+  });
+
+  const retryPlane = (action) => submit(action, '/api/actions/retry-plane', { key: action.key }, ({ completion }) => (
+    completion.planeSynced ? { tone: 'ok', text: 'Plane updated to Done.' } : { tone: 'warn', text: `Plane still not changed. ${completion.planeError ?? ''}`.trim() }
+  ));
+
+  const reopen = (action) => submit(action, '/api/actions/reopen', { key: action.key }, () => ({ tone: 'info', text: 'Reopened.' }));
 
   const toggleGroup = (id) => setOpenGroups((current) => {
     const next = new Set(current);
@@ -227,6 +310,13 @@ export function MeetingView({ projects, developers, githubConnected, planeConnec
           <span className={githubConnected ? 'on' : ''}>Git {githubConnected ? 'synced' : 'not connected'}</span>
         </p>
       </header>
+
+      {notice && (
+        <div className={`ab-notice ab-notice-${notice.tone}`} role="status">
+          <span>{notice.text}</span>
+          <button type="button" aria-label="Dismiss" onClick={() => setNotice(null)}>×</button>
+        </div>
+      )}
 
       <nav className="ab-people" aria-label="Whose actions to show">
         {people.map((p) => (
@@ -282,6 +372,14 @@ export function MeetingView({ projects, developers, githubConnected, planeConnec
                         showOwner={showOwner}
                         onOpenProject={onOpenProject}
                         projects={projects}
+                        planeWriteMode={planeWriteMode}
+                        confirming={confirming === action._id}
+                        busyKey={busyKey}
+                        onAskDone={() => setConfirming(confirming === action._id ? null : action._id)}
+                        onCancel={() => setConfirming(null)}
+                        onConfirmDone={(note) => confirmDone(action, note)}
+                        onRetry={() => retryPlane(action)}
+                        onReopen={() => reopen(action)}
                       />
                     ))}
                   </ul>

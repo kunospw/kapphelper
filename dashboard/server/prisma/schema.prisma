@@ -121,6 +121,7 @@ model Action {
   detail       String?
   source       String?
   due          String?
+  externalId   String? // id in the source system (Plane work-item id) — lets Mark done reach back to the source
   createdAtSrc DateTime? // createdAt as reported by the source system (Plane etc.)
   updatedAtSrc DateTime? // updatedAt as reported by the source system
   origin       String // "manual" | "synced"
@@ -187,4 +188,25 @@ model SyncRun {
   refreshedAt DateTime @default(now())
 
   @@index([source, refreshedAt])
+}
+
+/// "Mark done" from the dashboard. Kept in its own table because both action
+/// feeds are rebuilt on every sync (merge-activity replaces synced rows,
+/// publish-portfolio replaces manual rows), so a flag on Action would be lost.
+/// key = "plane:<PlaneWorkItem.id>" | "manual:<developerId>:<title-slug>".
+/// completedBy is the DevUser email — this is the audit trail.
+model ActionCompletion {
+  id            String    @id @default(cuid())
+  key           String    @unique
+  title         String
+  developerId   String?
+  completedBy   String
+  completedAt   DateTime  @default(now())
+  note          String?
+  planeItemId   String? // set for plane: keys
+  planeSynced   Boolean   @default(false) // true only when Plane itself was changed
+  planeSyncedAt DateTime?
+  planeError    String? // why Plane was not changed (disabled / dry run / failure)
+
+  @@index([completedAt])
 }

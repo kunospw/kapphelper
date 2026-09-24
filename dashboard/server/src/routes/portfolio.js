@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
+import { planeWriteMode } from '../plane.js';
+import { slugTitle } from './actions.js';
 
 function shapeActivity(row) {
   return {
@@ -12,10 +14,31 @@ function shapeActivity(row) {
   };
 }
 
-function shapeAction(row, developer) {
+const COMPLETED_VISIBLE_DAYS = 30;
+const STALE_TOLERANCE_MS = 60_000;
+
+// Stable identity for an action across syncs (Action row ids change every merge).
+function actionKey(row, developer) {
+  if (row.externalId) return `plane:${row.externalId}`;
+  if (row.origin === 'manual') return `manual:${developer.id}:${slugTitle(row.title)}`;
+  return null; // synced row from before externalId existed — resolves on the next sync
+}
+
+// A completion only counts while the source has not moved on: if the Plane item
+// was edited (e.g. reopened) after we recorded it, the dashboard shows it open again.
+function activeCompletion(row, completion) {
+  if (!completion) return null;
+  if (row.origin === 'synced' && row.updatedAtSrc && row.updatedAtSrc.getTime() > completion.completedAt.getTime() + STALE_TOLERANCE_MS) return null;
+  return completion;
+}
+
+function shapeAction(row, developer, completions) {
+  const key = actionKey(row, developer);
+  const completion = key ? activeCompletion(row, completions.get(key)) : null;
   return {
+    key,
     project: row.project?.name ?? row.projectLabel ?? null,
-    status: row.status,
+    status: completion ? 'Done' : row.status,
     priority: row.priority,
     owner: developer.name,
     title: row.title,
@@ -24,13 +47,24 @@ function shapeAction(row, developer) {
     due: row.due,
     createdAt: row.createdAtSrc ? row.createdAtSrc.toISOString() : null,
     updatedAt: row.updatedAtSrc ? row.updatedAtSrc.toISOString() : null,
+    completed: completion
+      ? {
+        by: completion.completedBy,
+        at: completion.completedAt.toISOString(),
+        note: completion.note,
+        planeSynced: completion.planeSynced,
+        planeError: completion.planeError,
+        planeLinked: Boolean(completion.planeItemId),
+      }
+      : null,
   };
 }
 
 export const portfolioRouter = Router();
 
 portfolioRouter.get('/portfolio', async (_req, res) => {
-  const [developers, projects, portfolioRun] = await Promise.all([
+  const cutoff = new Date(Date.now() - COMPLETED_VISIBLE_DAYS * 86_400_000);
+  const [developers, projects, portfolioRun, completionRows] = await Promise.all([
     prisma.developer.findMany({
       include: {
         activities: {
@@ -52,10 +86,13 @@ portfolioRouter.get('/portfolio', async (_req, res) => {
     }),
     prisma.project.findMany({ orderBy: { name: 'asc' } }),
     prisma.syncRun.findFirst({ where: { source: 'portfolio' }, orderBy: { refreshedAt: 'desc' } }),
+    prisma.actionCompletion.findMany(),
   ]);
+  const completions = new Map(completionRows.map((row) => [row.key, row]));
 
   res.json({
     generatedAt: portfolioRun?.refreshedAt?.toISOString() ?? null,
+    planeWriteMode: planeWriteMode(),
     developerActivity: developers.map((developer) => ({
       id: developer.id,
       name: developer.name,
@@ -64,7 +101,10 @@ portfolioRouter.get('/portfolio', async (_req, res) => {
       focus: developer.focus,
       lastUpdated: developer.lastUpdated ? developer.lastUpdated.toISOString().slice(0, 10) : null,
       activities: developer.activities.map(shapeActivity),
-      actions: developer.actions.map((action) => shapeAction(action, developer)),
+      // Completed items older than the window drop off the board; they stay in ActionCompletion as the audit trail.
+      actions: developer.actions
+        .map((action) => shapeAction(action, developer, completions))
+        .filter((action) => !action.completed || new Date(action.completed.at) >= cutoff),
     })),
     projects: projects.map((project) => ({
       id: project.id,

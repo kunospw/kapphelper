@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '../lib/api.js';
 
 const SOURCE = {
@@ -14,6 +14,9 @@ export function usePortfolio(user) {
     error: null,
     source: SOURCE,
   });
+
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = useCallback(() => setReloadKey((key) => key + 1), []);
 
   useEffect(() => {
     async function load() {
@@ -32,7 +35,7 @@ export function usePortfolio(user) {
       });
     }
     if (user) load().catch((error) => setState({ status: 'error', data: null, error: error.message ?? 'Unknown error loading portfolio snapshot.', source: SOURCE }));
-  }, [user]);
+  }, [user, reloadKey]);
 
-  return state;
+  return { ...state, reload };
 }

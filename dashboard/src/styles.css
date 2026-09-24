@@ -672,3 +672,28 @@ h1, h2, h3, h4, p { margin: 0; }
 }
 
 .activity-source.source-capture { color: #c11574; background: #fdf2fa; }
+
+/* Mark done */
+.ab-line { display: flex; align-items: stretch; }
+.ab-line .ab-row { flex: 1; min-width: 0; }
+.ab-quick-done { flex: none; margin: 0; padding: 0 14px; border: 0; border-left: 1px solid var(--border); background: var(--surface); color: #027a48; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.ab-quick-done:hover { background: #ecfdf3; }
+.ab-quick-done:focus-visible, .ab-btn:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.ab-item.is-done .ab-title { color: var(--text-muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.ab-confirm { display: grid; gap: 10px; padding: 12px 16px 14px; border-top: 1px dashed var(--border); background: #f6fef9; }
+.ab-confirm p { margin: 0; color: var(--text-soft); font-size: 13px; line-height: 1.5; }
+.ab-confirm label { display: grid; gap: 4px; color: var(--text-muted); font-size: 11px; font-weight: 600; }
+.ab-confirm input { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; font-size: 13px; color: var(--text); background: #fff; }
+.ab-confirm-actions { display: flex; gap: 8px; }
+.ab-btn { padding: 7px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; color: var(--text); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.ab-btn:disabled, .ab-link:disabled { opacity: .55; cursor: progress; }
+.ab-btn-primary { border-color: #027a48; background: #027a48; color: #fff; }
+.ab-detail-actions { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.ab-done-note { color: var(--text-soft); font-size: 12px; }
+.ab-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; }
+.ab-notice button { border: 0; background: none; color: inherit; font-size: 18px; line-height: 1; cursor: pointer; }
+.ab-notice-ok { background: #ecfdf3; border-color: #a6f4c5; color: #054f31; }
+.ab-notice-warn { background: #fffaeb; border-color: #fedf89; color: #93370d; }
+.ab-notice-error { background: #fef3f2; border-color: #fecdca; color: #912018; }
+.ab-notice-info { background: #eff8ff; border-color: #b2ddff; color: #175cd3; }
+@media (max-width: 720px) { .ab-quick-done { padding: 0 10px; } }

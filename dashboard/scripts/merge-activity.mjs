@@ -126,6 +126,7 @@ for (const item of workItems.filter((wi) => !isClosed(wi.state))) {
       title: `${item.identifier ?? item.id} · ${item.name}`,
       detail: `Plane work item${priorityNote}.`,
       source: 'Plane',
+      externalId: item.id,
       due: item.targetDate || 'No due date',
       createdAtSrc: item.createdAt,
       updatedAtSrc: item.updatedAt,
