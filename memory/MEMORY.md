@@ -31,3 +31,7 @@ against.
 - [Undeployed commit missing deploy log line](feedback_undeployed-commit-missing-deploy-log-line.md) — a commit lacking the usual "deployed" line in CHANGELOG/tracker is a sign it was never rebuilt.
 - [Push immediately after tested + working](feedback_push-immediately-after-tested-working.md) — once a change is verified working, commit and push right away, don't batch it with later work.
 - [Explain/checkpoint before implementing when asked](feedback_explain-before-implementing-when-asked.md) — an explicit "create the ticket / explain first, then implement" is a hard checkpoint, not a preference; don't let investigation momentum carry into edits.
+- [Use Mac build server for App Store uploads](feedback_use-mac-build-server-for-app-store-uploads.md) — Ken's standard: drive version bump/build/sign/upload for both stores via an AI session on the shared Mac, not manual SCP or GitHub Actions.
+- [Model usage discipline](feedback_model-usage-discipline.md) — default to Sonnet 5 medium effort; team shares a limited usage pool, escalate model/effort deliberately.
+- [Credential hygiene in AI sessions](feedback_credential-hygiene-in-ai-sessions.md) — revoke tokens after setup, keep real credential values in a personal notes file, never in chat or git.
+- [KAppHelper dashboard requirements](project_kapphelper-dashboard-requirements.md) — Ken's origin brief for the team dashboard: one-view status, next-milestone field, automated sync, access-controlled hosting, terse meeting view.
