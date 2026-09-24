@@ -195,9 +195,10 @@ kasar untuk 1 developer (Dyah) paruh waktu; sesuaikan.
 - **Sync digerakkan registry**: baca `projects.yaml` (`repos`, `plane.project`) alih-alih
   hardcode TSApp; tambahkan repo TCS/TWPC (KairosWeb, KTime-POD), KDocVerify (KConnectApp),
   KFMS satu per satu.
-- **Ingest capture & memory** dari repo ini ke `Activity` (`sourceType: capture`): frontmatter
-  (`date/from/type/about/plane/status`) sudah terstruktur. `status: unconfirmed` →
-  daftar "pertanyaan terbuka".
+- **Ingest capture** — *selesai 2026-09-24* (`dashboard/scripts/sync-captures.mjs`, origin `capture`,
+  ikut `sync-all`): capture yang `from:`-nya developer terdaftar menjadi aktivitas; capture dari
+  stakeholder (Ken, Iwan) dilewati. *Belum*: ingest memory, dan daftar "pertanyaan terbuka" dari
+  `status: unconfirmed`, dan capture stakeholder sebagai timeline project.
 - **Peta identitas developer**: `githubLogin`, `email`, `aliases` per orang (kolom sudah ada
   di `Developer`) supaya commit/work-item tak membuat profil ganda.
 - **Model Milestone** baru: `Milestone{projectId, title, targetDate, status, ownerId}` +

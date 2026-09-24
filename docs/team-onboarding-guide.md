@@ -237,8 +237,9 @@ Aturan emas: bila informasi hanya mengulang apa yang sudah diketahui git atau Pl
 > **Jujur soal kondisi sekarang:** sync dashboard baru mencakup **Plane project "Kairos Invoice
 > Portal" (TSApp)** dan **satu repo git (KairosTSApp)**. Bila kamu mengerjakan TCS/TWPC/KDocVerify,
 > menjalankan dashboard sendiri **belum menampilkan pekerjaanmu**. Sampai sync per-registry dibuat
-> (roadmap Fase B), progresmu masuk lewat capture/handover dan diangkat ke `portfolio.json` oleh
-> Dyah. Jadi untuk saat ini Jalur B lebih untuk belajar/ikut mengembangkan dashboard.
+> (roadmap Fase B), progresmu terlihat lewat **capture + `/handover`**: setelah kamu push, Dyah
+> `git pull` lalu `sync-all`, dan capture berpenulis `from: <namamu>` otomatis muncul di kartumu.
+> Jadi Jalur B saat ini lebih untuk belajar/ikut mengembangkan dashboard.
 
 **Prasyarat:** Node.js **20.6+** (skrip memakai `node --env-file`), PostgreSQL 16+ **atau**
 Docker.
@@ -277,7 +278,7 @@ Verifikasi cepat: `curl http://127.0.0.1:4175/api/health` → `{"ok":true}`.
 ## 9. Batasan saat ini (jangan diklaim sudah ada)
 
 - Sync dashboard hanya **TSApp** (satu repo, satu project Plane); repo lain belum tersambung.
-- Capture dan memory **belum di-ingest** ke feed dashboard.
+- **Capture sudah masuk feed dashboard** (`npm run sync:captures`, ikut `sync-all`) — tapi hanya bila `from:` di capture cocok dengan developer terdaftar (mis. `from: Praisilia`); capture dari Ken/Iwan dicatat sebagai keputusan, bukan aktivitas developer. Memory belum di-ingest.
 - Belum ada role PM/dev, halaman workload, atau milestone bertanggal.
 - **AI (Ollama) belum terpasang/terhubung**; belum ada rekomendasi next-step.
 - Dashboard **lokal** (di laptop Dyah), belum di-host; hanya jalan selama server hidup.
