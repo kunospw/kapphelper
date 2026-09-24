@@ -33,7 +33,7 @@ const project = process.env.LOCAL_GIT_PROJECT || repository;
 for (const commit of commits) {
   await prisma.githubCommit.upsert({
     where: { sha_repository: { sha: commit.sha, repository } },
-    update: { authorName: commit.authorName, authorEmail: commit.authorEmail, timestamp: new Date(commit.timestamp), title: commit.title, project },
+    update: { syncedAt: new Date(), authorName: commit.authorName, authorEmail: commit.authorEmail, timestamp: new Date(commit.timestamp), title: commit.title, project },
     create: {
       sha: commit.sha,
       repository,

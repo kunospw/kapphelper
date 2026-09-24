@@ -147,7 +147,7 @@ model GithubCommit {
   timestamp   DateTime
   title       String?
   url         String?
-  syncedAt    DateTime @default(now())
+  syncedAt    DateTime @default(now()) // last time a sync saw this row; rows no longer in the source keep their old value
 
   @@unique([sha, repository])
 }
@@ -160,7 +160,7 @@ model GithubPullRequest {
   authorLogin String?
   updatedAt   DateTime?
   url         String?
-  syncedAt    DateTime @default(now())
+  syncedAt    DateTime @default(now()) // last time a sync saw this row; rows no longer in the source keep their old value
 
   @@unique([number, repository])
 }
@@ -178,7 +178,7 @@ model PlaneWorkItem {
   updatedAt  DateTime?
   url        String?
   project    String?
-  syncedAt   DateTime  @default(now())
+  syncedAt   DateTime  @default(now()) // last time a sync saw this row; rows no longer in the source keep their old value
 }
 
 /// Audit history of sync/publish runs — appended, not overwritten, so this is

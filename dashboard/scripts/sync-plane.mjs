@@ -33,6 +33,7 @@ const candidates = [...new Set([
 
 let response;
 let endpoint;
+let workingAuth;
 const attempts = [];
 const authMethods = [
   { name: 'X-API-Key', headers: { 'X-API-Key': token } },
@@ -47,6 +48,7 @@ for (const candidate of candidates) {
     if (attempt.ok && contentType.includes('application/json')) {
       response = attempt;
       endpoint = candidate;
+      workingAuth = auth;
       break;
     }
     attempts.push(`${attempt.status} ${candidate} [${auth.name}] (${contentType || 'no content type'})`);
@@ -56,7 +58,28 @@ for (const candidate of candidates) {
 if (!response) throw new Error(`Plane did not return JSON from any candidate endpoint. Results: ${attempts.join(' | ')}`);
 
 const payload = await response.json();
-const records = Array.isArray(payload) ? payload : payload.results ?? payload.data ?? [];
+let records = Array.isArray(payload) ? payload : payload.results ?? payload.data ?? [];
+
+// Plane pages its list (100 per page). Without following next_cursor, everything past page 1 was
+// silently dropped — the project has 155 items and only 100 were ever synced. A failure on a later
+// page aborts the run instead of writing a partial list that looks complete.
+const MAX_PAGES = 20;
+let pageCount = 1;
+let nextCursor = !Array.isArray(payload) && payload.next_page_results ? payload.next_cursor : null;
+while (nextCursor) {
+  if (pageCount >= MAX_PAGES) throw new Error(`Plane returned more than ${MAX_PAGES} pages; refusing to sync a partial list.`);
+  const pageUrl = `${endpoint}${endpoint.includes('?') ? '&' : '?'}cursor=${encodeURIComponent(nextCursor)}`;
+  const pageResponse = await fetch(pageUrl, { headers: { Accept: 'application/json', ...workingAuth.headers } });
+  if (!pageResponse.ok) throw new Error(`Plane page ${pageCount + 1} failed (HTTP ${pageResponse.status}); not syncing a partial list.`);
+  const pagePayload = await pageResponse.json();
+  records = records.concat(pagePayload.results ?? []);
+  nextCursor = pagePayload.next_page_results ? pagePayload.next_cursor : null;
+  pageCount += 1;
+}
+const expectedTotal = Array.isArray(payload) ? null : payload.total_results ?? payload.total_count ?? null;
+if (expectedTotal !== null && records.length < expectedTotal) {
+  throw new Error(`Plane reports ${expectedTotal} work items but only ${records.length} were fetched; not syncing a partial list.`);
+}
 const workItems = records.map((item) => ({
   id: item.id,
   identifier: item.identifier ?? (item.sequence_id ? `${process.env.PLANE_PROJECT_NAME}-${item.sequence_id}` : item.id),
@@ -73,6 +96,7 @@ for (const item of workItems) {
   await prisma.planeWorkItem.upsert({
     where: { id: item.id },
     update: {
+      syncedAt: new Date(), // last time a sync saw this item (@default(now()) only covers the first insert)
       identifier: item.identifier,
       name: item.name,
       state: item.state,
@@ -102,8 +126,8 @@ for (const item of workItems) {
 
 const refreshedAt = new Date();
 await prisma.syncRun.create({
-  data: { source: 'plane', status: 'success', detail: { project: process.env.PLANE_PROJECT_NAME, workItemCount: workItems.length, endpoint }, refreshedAt },
+  data: { source: 'plane', status: 'success', detail: { project: process.env.PLANE_PROJECT_NAME, workItemCount: workItems.length, pages: pageCount, totalReported: expectedTotal, endpoint }, refreshedAt },
 });
 
-console.log(`Plane activity synced to Postgres: ${process.env.PLANE_PROJECT_NAME} (${workItems.length} work items).`);
+console.log(`Plane activity synced to Postgres: ${process.env.PLANE_PROJECT_NAME} (${workItems.length} work items, ${pageCount} page${pageCount === 1 ? '' : 's'}).`);
 await prisma.$disconnect();

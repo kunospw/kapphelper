@@ -43,6 +43,7 @@ for (const repository of repositories) {
     await prisma.githubCommit.upsert({
       where: { sha_repository: { sha, repository } },
       update: {
+        syncedAt: new Date(),
         authorLogin: commit.author?.login ?? null,
         authorName: commit.commit.author.name,
         authorEmail: commit.commit.author.email,
@@ -68,7 +69,7 @@ for (const repository of repositories) {
   for (const pullRequest of pullRequests) {
     await prisma.githubPullRequest.upsert({
       where: { number_repository: { number: pullRequest.number, repository } },
-      update: { title: pullRequest.title, authorLogin: pullRequest.user?.login ?? null, updatedAt: new Date(pullRequest.updated_at), url: pullRequest.html_url },
+      update: { syncedAt: new Date(), title: pullRequest.title, authorLogin: pullRequest.user?.login ?? null, updatedAt: new Date(pullRequest.updated_at), url: pullRequest.html_url },
       create: { number: pullRequest.number, repository, title: pullRequest.title, authorLogin: pullRequest.user?.login ?? null, updatedAt: new Date(pullRequest.updated_at), url: pullRequest.html_url },
     });
   }
