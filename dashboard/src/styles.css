@@ -697,3 +697,8 @@ h1, h2, h3, h4, p { margin: 0; }
 .ab-notice-error { background: #fef3f2; border-color: #fecdca; color: #912018; }
 .ab-notice-info { background: #eff8ff; border-color: #b2ddff; color: #175cd3; }
 @media (max-width: 720px) { .ab-quick-done { padding: 0 10px; } }
+
+/* Access role */
+.user-role { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #f2f4f7; color: var(--text-soft); font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.user-role-pm, .user-role-lead { background: #eff8ff; color: #175cd3; }
+.ab-locked-note { margin: 4px 0 0; color: var(--text-muted); font-size: 12px; font-style: italic; }

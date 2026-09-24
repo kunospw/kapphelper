@@ -36,7 +36,7 @@ authRouter.post('/login', async (req, res) => {
   res.json({
     accessToken: signAccessToken(devUser),
     refreshToken: plain,
-    user: { email: devUser.email, developerId: devUser.developerId },
+    user: { email: devUser.email, developerId: devUser.developerId, accessRole: devUser.accessRole },
   });
 });
 
@@ -54,7 +54,7 @@ authRouter.post('/refresh', async (req, res) => {
 
   res.json({
     accessToken: signAccessToken(record.devUser),
-    user: { email: record.devUser.email, developerId: record.devUser.developerId },
+    user: { email: record.devUser.email, developerId: record.devUser.developerId, accessRole: record.devUser.accessRole },
   });
 });
 

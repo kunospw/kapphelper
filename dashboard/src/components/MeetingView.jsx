@@ -119,7 +119,7 @@ function ActionItem({ action, open, onToggle, showOwner, onOpenProject, projects
           )}
           <span className="ab-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
         </button>
-        {!done && action.key && (
+        {!done && action.key && action.canComplete && (
           <button type="button" className="ab-quick-done" aria-label={`Mark done: ${name}`} title="Mark done" onClick={onAskDone}>✓ Done</button>
         )}
       </div>
@@ -156,10 +156,13 @@ function ActionItem({ action, open, onToggle, showOwner, onOpenProject, projects
             <div><dt>Last updated</dt><dd>{stamp ? absoluteTime(stamp) : 'Not recorded'}</dd></div>
             <div><dt>Due</dt><dd>{due ?? 'No date recorded'}</dd></div>
           </dl>
+          {!done && action.key && !action.canComplete && (
+            <p className="ab-locked-note">Only {action.owner} or a PM/lead can mark this done.</p>
+          )}
           <div className="ab-detail-actions">
             {project && <button type="button" className="ab-link" onClick={() => onOpenProject(project.id)}>Open {project.name} context →</button>}
-            {done && planeLinked && !done.planeSynced && <button type="button" className="ab-link" disabled={busy} onClick={onRetry}>Retry Plane update</button>}
-            {done && !done.planeSynced && <button type="button" className="ab-link" disabled={busy} onClick={onReopen}>Reopen</button>}
+            {done && done.canManage && planeLinked && !done.planeSynced && <button type="button" className="ab-link" disabled={busy} onClick={onRetry}>Retry Plane update</button>}
+            {done && done.canManage && !done.planeSynced && <button type="button" className="ab-link" disabled={busy} onClick={onReopen}>Reopen</button>}
           </div>
         </div>
       )}

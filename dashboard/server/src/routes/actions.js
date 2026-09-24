@@ -10,6 +10,7 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { PlaneError, markPlaneItemDone, planeWriteMode } from '../plane.js';
+import { canComplete, canManageCompletion, describeWhoCanComplete } from '../auth/roles.js';
 
 export function slugTitle(value = '') {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -26,20 +27,29 @@ function shapeCompletion(row) {
   };
 }
 
+// Owners = the Developers this action is assigned to (a Plane item can have several assignees,
+// each of whom has an Action row carrying the item's externalId).
+async function ownersOfPlaneItem(itemId) {
+  const rows = await prisma.action.findMany({ where: { externalId: itemId }, select: { developerId: true, developer: { select: { name: true } } } });
+  return { ids: [...new Set(rows.map((row) => row.developerId))], names: [...new Set(rows.map((row) => row.developer.name))] };
+}
+
 async function resolveTarget(key) {
   if (typeof key !== 'string' || key.length > 300) return null;
   if (key.startsWith('plane:')) {
     const id = key.slice('plane:'.length);
     const item = id ? await prisma.planeWorkItem.findUnique({ where: { id } }) : null;
-    return item ? { kind: 'plane', title: item.identifier ? `${item.identifier} · ${item.name}` : item.name, planeItemId: item.id, developerId: null } : null;
+    if (!item) return null;
+    const owners = await ownersOfPlaneItem(item.id);
+    return { kind: 'plane', title: item.identifier ? `${item.identifier} · ${item.name}` : item.name, planeItemId: item.id, developerId: null, ownerIds: owners.ids, ownerNames: owners.names };
   }
   if (key.startsWith('manual:')) {
     const [, developerId, ...rest] = key.split(':');
     const slug = rest.join(':');
     if (!developerId || !slug) return null;
-    const rows = await prisma.action.findMany({ where: { developerId, origin: 'manual' }, select: { title: true } });
+    const rows = await prisma.action.findMany({ where: { developerId, origin: 'manual' }, select: { title: true, developer: { select: { name: true } } } });
     const match = rows.find((row) => slugTitle(row.title) === slug);
-    return match ? { kind: 'manual', title: match.title, planeItemId: null, developerId } : null;
+    return match ? { kind: 'manual', title: match.title, planeItemId: null, developerId, ownerIds: [developerId], ownerNames: [match.developer.name] } : null;
   }
   return null;
 }
@@ -78,6 +88,10 @@ actionsRouter.post('/complete', route(async (req, res) => {
   const { key, note } = req.body ?? {};
   const target = await resolveTarget(key);
   if (!target) return res.status(404).json({ error: 'That action no longer exists — refresh the dashboard.' });
+  if (!canComplete(req.devUser, target.ownerIds)) {
+    console.log(`[actions] DENIED ${req.devUser.email} (${req.devUser.accessRole}) mark done: ${target.title}`);
+    return res.status(403).json({ error: describeWhoCanComplete(target.ownerNames) });
+  }
 
   const existing = await prisma.actionCompletion.findUnique({ where: { key } });
   if (existing) return res.json({ ok: true, alreadyDone: true, completion: shapeCompletion(existing) });
@@ -100,6 +114,8 @@ actionsRouter.post('/complete', route(async (req, res) => {
 actionsRouter.post('/retry-plane', route(async (req, res) => {
   const completion = await prisma.actionCompletion.findUnique({ where: { key: req.body?.key ?? '' } });
   if (!completion?.planeItemId) return res.status(404).json({ error: 'No Plane completion to retry.' });
+  const retryTarget = await resolveTarget(completion.key);
+  if (!canManageCompletion(req.devUser, completion, retryTarget?.ownerIds)) return res.status(403).json({ error: 'Only the person who marked this done, its owner, or a PM/lead can retry the Plane update.' });
   if (completion.planeSynced) return res.json({ ok: true, alreadySynced: true, completion: shapeCompletion(completion) });
   const updated = await tryPlane(completion.id, completion.planeItemId);
   res.json({ ok: true, completion: shapeCompletion(updated) });
@@ -108,6 +124,8 @@ actionsRouter.post('/retry-plane', route(async (req, res) => {
 actionsRouter.post('/reopen', route(async (req, res) => {
   const completion = await prisma.actionCompletion.findUnique({ where: { key: req.body?.key ?? '' } });
   if (!completion) return res.status(404).json({ error: 'Nothing to reopen.' });
+  const reopenTarget = await resolveTarget(completion.key);
+  if (!canManageCompletion(req.devUser, completion, reopenTarget?.ownerIds)) return res.status(403).json({ error: 'Only the person who marked this done, its owner, or a PM/lead can reopen it.' });
   if (completion.planeSynced) {
     return res.status(409).json({ error: 'This item was set to Done in Plane. Reopen it in Plane — it will return here after the next sync.' });
   }

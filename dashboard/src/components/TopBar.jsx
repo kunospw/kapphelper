@@ -21,7 +21,7 @@ export function TopBar({ view, snapshotDate, query, onQueryChange, source, user,
       </div>
 
         <div className="topbar-side">
-          {user && <div className="user-menu"><span className="user-avatar">{(user.displayName ?? user.email ?? 'U').slice(0, 1).toUpperCase()}</span><span className="user-name">{user.displayName ?? user.email}</span><button type="button" onClick={onSignOut}>Sign out</button></div>}
+          {user && <div className="user-menu"><span className="user-avatar">{(user.displayName ?? user.email ?? 'U').slice(0, 1).toUpperCase()}</span><span className="user-name">{user.displayName ?? user.email}</span>{user.accessRole && <span className={`user-role user-role-${user.accessRole}`} title="Your permission level">{user.accessRole}</span>}<button type="button" onClick={onSignOut}>Sign out</button></div>}
           <div
           className={`snapshot-chip snapshot-${freshness.tone}`}
           title={source?.detail ?? 'Snapshot source unknown'}

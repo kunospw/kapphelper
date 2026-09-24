@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../db.js';
 import { planeWriteMode } from '../plane.js';
 import { slugTitle } from './actions.js';
+import { canComplete, canManageCompletion } from '../auth/roles.js';
 
 function shapeActivity(row) {
   return {
@@ -32,11 +33,14 @@ function activeCompletion(row, completion) {
   return completion;
 }
 
-function shapeAction(row, developer, completions) {
+function shapeAction(row, developer, completions, viewer, ownersByKey) {
   const key = actionKey(row, developer);
   const completion = key ? activeCompletion(row, completions.get(key)) : null;
+  const owners = key ? (ownersByKey.get(key) ?? [developer.id]) : [];
   return {
     key,
+    // Computed here so the browser never re-implements the rules; the API enforces them again on write.
+    canComplete: Boolean(key) && canComplete(viewer, owners),
     project: row.project?.name ?? row.projectLabel ?? null,
     status: completion ? 'Done' : row.status,
     priority: row.priority,
@@ -55,6 +59,7 @@ function shapeAction(row, developer, completions) {
         planeSynced: completion.planeSynced,
         planeError: completion.planeError,
         planeLinked: Boolean(completion.planeItemId),
+        canManage: canManageCompletion(viewer, completion, owners),
       }
       : null,
   };
@@ -62,7 +67,7 @@ function shapeAction(row, developer, completions) {
 
 export const portfolioRouter = Router();
 
-portfolioRouter.get('/portfolio', async (_req, res) => {
+portfolioRouter.get('/portfolio', async (req, res) => {
   const cutoff = new Date(Date.now() - COMPLETED_VISIBLE_DAYS * 86_400_000);
   const [developers, projects, portfolioRun, completionRows] = await Promise.all([
     prisma.developer.findMany({
@@ -89,10 +94,19 @@ portfolioRouter.get('/portfolio', async (_req, res) => {
     prisma.actionCompletion.findMany(),
   ]);
   const completions = new Map(completionRows.map((row) => [row.key, row]));
+  // Every owner of an action key (a Plane item with several assignees appears under each of them).
+  const ownersByKey = new Map();
+  for (const developer of developers) {
+    for (const action of developer.actions) {
+      const key = actionKey(action, developer);
+      if (key) ownersByKey.set(key, [...(ownersByKey.get(key) ?? []), developer.id]);
+    }
+  }
 
   res.json({
     generatedAt: portfolioRun?.refreshedAt?.toISOString() ?? null,
     planeWriteMode: planeWriteMode(),
+    viewer: { email: req.devUser.email, developerId: req.devUser.developerId, accessRole: req.devUser.accessRole },
     developerActivity: developers.map((developer) => ({
       id: developer.id,
       name: developer.name,
@@ -103,7 +117,7 @@ portfolioRouter.get('/portfolio', async (_req, res) => {
       activities: developer.activities.map(shapeActivity),
       // Completed items older than the window drop off the board; they stay in ActionCompletion as the audit trail.
       actions: developer.actions
-        .map((action) => shapeAction(action, developer, completions))
+        .map((action) => shapeAction(action, developer, completions, req.devUser, ownersByKey))
         .filter((action) => !action.completed || new Date(action.completed.at) >= cutoff),
     })),
     projects: projects.map((project) => ({

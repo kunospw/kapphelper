@@ -38,6 +38,9 @@ model DevUser {
   email        String    @unique
   passwordHash String
   active       Boolean   @default(true)
+  /// What this login may do: "pm" and "lead" can mark anyone's action done; "dev" only their own.
+  /// (Developer.role is free-text job title; this is the permission level.) Server-enforced.
+  accessRole   String    @default("dev")
   developerId  String?   @unique
   developer    Developer? @relation(fields: [developerId], references: [id])
   createdAt    DateTime  @default(now())
