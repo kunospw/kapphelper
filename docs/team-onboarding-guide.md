@@ -22,14 +22,14 @@ Panduan ini **tidak akan berjalan** bagi orang lain sampai hal-hal berikut beres
       `gh repo edit kunospw/kapphelper --add-collaborator <github-username>`.
       (Pindah ke org `Kairos-Business-Solutions` butuh persetujuan Ken — jangan dilakukan tanpa
       izin.)
-- [ ] **Perbaiki `bootstrap.ps1`.** Skrip Windows masih **mewajibkan Docker** (`exit 1` bila tidak
-      ada), padahal `bootstrap.sh` sudah dilonggarkan (commit `5a46544`, belum di-push). Tanpa
-      perbaikan, developer Windows tanpa Docker akan berhenti di langkah bootstrap. Samakan
-      dengan versi `.sh`, atau minta mereka melewati bootstrap dan mengikuti "Langkah 1b" di bawah.
-- [ ] **Path pribadi di `projects.yaml`.** `meta.credentials_ref` dan `meta.mobile_deploy_guide`
-      menunjuk ke `D:/Dee's archivest/...` — tidak ada di mesin lain. Ganti menjadi pointer netral
-      (mis. "Ken via WhatsApp" / nama entri password manager) — sesuai catatan di
-      `using-kapphelper.md`.
+- [x] **`bootstrap.ps1` diperbaiki (2026-09-24).** Dua masalah: (1) Docker dulu **wajib**
+      (`exit 1` bila tidak ada) — sekarang pengecekan lunak seperti `bootstrap.sh`; (2) file
+      berisi karakter em-dash yang membuat **Windows PowerShell 5.1 gagal parse** (6 error),
+      jadi skrip tidak bisa jalan sama sekali di PowerShell bawaan Windows — sekarang ASCII murni.
+      Diuji di mesin tanpa Docker: exit code 0. **Pastikan perbaikan ini ikut di-push.**
+- [x] **Path pribadi di `projects.yaml` diganti pointer netral.** `meta.credentials_ref` dan
+      `meta.mobile_deploy_guide` tidak lagi menunjuk ke `D:/...` (menyebut nama file + "minta Ken
+      atau Dyah"). Salinan dokumennya sendiri tetap di luar git.
 - [ ] **Beritahu jujur soal cakupan dashboard** (lihat Bagian 9): sync sekarang hanya TSApp.
 
 ---
@@ -94,14 +94,16 @@ cd kapphelper
 ./bootstrap.sh
 ```
 
-**Langkah 1b — kalau bootstrap Windows berhenti karena "Missing tools: docker":** ini masalah
-yang sudah diketahui (lihat Bagian 0). Docker **tidak dibutuhkan** untuk Jalur A. Lewati
-bootstrap, lalu jalankan manual:
-```powershell
-git pull --ff-only
-New-Item -ItemType Directory -Force artifacts, logs | Out-Null
-```
-(Folder `artifacts/` dan `logs/` gitignored.)
+Docker **tidak dibutuhkan** untuk Jalur A: bila tidak ada, bootstrap hanya menampilkan peringatan
+"Docker not found" dan tetap selesai (exit 0). Peringatan "Parent folder ... expected
+`~\klaudecode`" muncul bila repo tidak berada di `~/klaudecode` — pindahkan sesuai petunjuk yang
+dicetak (aturan Ken).
+
+> **Bila di repo lama (sebelum perbaikan 2026-09-24) bootstrap error di Windows** — mis. "Missing
+> tools: docker" atau error parser `The '<' operator is reserved` — `git pull` dulu agar mendapat
+> versi yang sudah diperbaiki. Darurat: lewati bootstrap dan jalankan manual
+> `git pull --ff-only; New-Item -ItemType Directory -Force artifacts, logs | Out-Null`
+> (folder itu gitignored).
 
 Bootstrap aman dijalankan ulang (idempoten).
 
@@ -289,7 +291,7 @@ Semua ini ada di `docs/pm-dashboard-roadmap.md` beserta urutan pengerjaannya.
 
 | Gejala | Penyebab umum | Solusi |
 |---|---|---|
-| `bootstrap.ps1`: "Missing tools: docker" | Skrip Windows masih mewajibkan Docker | Langkah 1b (lewati bootstrap); Docker tidak perlu untuk Jalur A |
+| `bootstrap.ps1`: "Missing tools: docker" atau `The '<' operator is reserved` | Versi lama skrip (Docker wajib + em-dash yang merusak parsing di PowerShell 5.1) | `git pull` untuk versi yang sudah diperbaiki; Docker tidak perlu untuk Jalur A |
 | `git clone`: repository not found / 403 | Belum jadi collaborator | Minta Dyah menjalankan `gh repo edit ... --add-collaborator` |
 | `git pull --ff-only` gagal | Ada perubahan lokal/divergen | Jangan paksa. `git status`; commit/stash dulu; bila divergen `git pull --rebase` |
 | Push ditolak (non-fast-forward) | Orang lain push duluan | `git pull --rebase origin main`, selesaikan konflik, push |
