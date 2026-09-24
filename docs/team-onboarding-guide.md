@@ -128,7 +128,20 @@ state repo aplikasinya → mencetak briefing satu paragraf.
 
 Bila `git pull` gagal, **berhenti dan laporkan** — jangan lanjut di data basi.
 
-### 4.1 Prompt setup untuk ditempel ke Claude (bantuan AI langkah demi langkah)
+### 4.0 Cara tercepat: `/onboard`
+
+Setelah clone, di sesi `claude` jalankan:
+
+```
+/onboard
+```
+
+Skill ini memandu satu langkah per giliran dan memverifikasi tiap langkah: cek tool, akses repo,
+identitas git, resolusi project, apakah namamu akan dikenali dashboard, capture pertama, lalu
+`/handover` yang aman. Idempoten — boleh diulang. Ia **tidak** pernah meminta atau menampilkan
+kredensial, dan tidak push tanpa konfirmasimu.
+
+### 4.1 Cadangan: prompt manual (bila `/onboard` tidak tersedia)
 
 Tempel ini di sesi pertama agar AI memandu dan memverifikasi tiap langkah:
 

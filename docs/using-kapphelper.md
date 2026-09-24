@@ -7,6 +7,7 @@ Practical reference for day-to-day work. Complements `README.md` (setup) and `CL
 Four things that work together:
 
 1. **Skills** — packaged procedures Claude runs on request:
+   - `/onboard` — guided first-time setup for a new developer: prerequisites, repo access, git identity, project resolution, dashboard name match, first capture, safe handover. Idempotent.
    - `/session-start` — pulls kapphelper, resolves current project, reads registry + recent captures + app-repo git state, prints briefing
    - `/deploy <project> <stack>` — reads deploy config from `projects.yaml`, runs non-privileged pre-flight, hands sudo command to user (advisory mode) or executes (executed mode, if configured)
    - `/capture` — turns ad-hoc info (meeting note, decision, screenshot, email) into properly-formatted capture file. Scrubs credentials. Drafts Plane issue if actionable (never auto-creates).
