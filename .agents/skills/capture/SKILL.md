@@ -59,6 +59,27 @@ Fill in the frontmatter fields. If unclear, ask **before** writing — never gue
 | `status` | `confirmed` (heard directly) \| `inferred` (deduced from context) \| `unconfirmed` (needs follow-up) |
 | `plane` | Plane issue ID if it maps to one, else `—`. See step 6 for drafting. |
 
+#### Optional: dashboard status fields (only for project status updates)
+
+If the capture is the developer reporting where a project stands (not a meeting decision or a
+gotcha), also collect these and add them to the frontmatter — the dashboard reads them
+(`dashboard/scripts/sync-captures.mjs`) and shows the project as "reported by <from>, <date>":
+
+| Field | Value |
+|---|---|
+| `project` | project id from `projects.yaml`/the dashboard: `taisin`, `kdocverify`, `tcs`, `twpc`, `kfms`, `oms`, `kconnect`, `kportal` (defaults to the capture folder if that is an id — `clients/twl/` is **not**, so set it) |
+| `health` | exactly one of: `Active`, `On track`, `At risk`, `Needs plan`, `Needs verification`, `No update`, `Paused`, `Release blocked` |
+| `milestone` + `milestone_date` | next milestone in plain words + `YYYY-MM-DD` target (only if the developer actually knows the date) |
+| `blocker` | what is blocking, or `none` |
+| `next_step` | the single next action |
+| `active_dev` | who is driving it now |
+
+Rules: **ask, don't infer** — leave a field out rather than guess it (an omitted field changes
+nothing; a wrong one shows up in front of Ken). If the blocker changes, ask whether `health`
+should change too (`blocker: none` alone does not change health). Latest capture wins per
+field, so a later capture with `milestone:` replaces the earlier one. Invalid `health` values or
+dates are ignored with a warning, so use the exact spellings above.
+
 ### 4. **SCRUB CREDENTIALS** (mandatory, before write)
 
 Screenshots and email pastes routinely contain passwords, tokens, connection strings, API keys, and personal contact info. **Never write raw content into the capture file without scrubbing first.**

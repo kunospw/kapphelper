@@ -91,6 +91,14 @@ status: confirmed        # confirmed | inferred | unconfirmed
 <what changes for us; link Plane issues that open/close/supersede>
 ```
 
+## Optional dashboard status fields
+
+A capture that reports where a project stands may add `project:`, `health:`, `milestone:`,
+`milestone_date:` (YYYY-MM-DD), `blocker:`, `next_step:`, `active_dev:` to its frontmatter. The
+dashboard applies the latest value per field and labels it "reported by <from>, <date>". `health`
+must be one of `Active | On track | At risk | Needs plan | Needs verification | No update | Paused |
+Release blocked`. Omit a field rather than guess it. Details: the `capture` skill.
+
 ## Two platforms — Dyah local (Windows), Jesynta server (Linux)
 
 - **Dyah** runs Claude Code locally on Windows. Deploys reach the server via SSH.

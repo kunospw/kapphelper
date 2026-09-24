@@ -183,6 +183,23 @@ Jawab pertanyaannya dengan fakta, mis.:
 - **What:** apa yang sedang dikerjakan · **Why:** konteks/keputusan siapa · **Impact:**
   blocker dan next step
 
+**Isi juga field status project** bila capture ini laporan posisi project — inilah cara kamu mengisi
+milestone/blocker di dashboard tanpa mengedit `portfolio.json`:
+
+```yaml
+project: kdocverify          # id project: taisin | kdocverify | tcs | twpc | kfms | oms | kconnect | kportal
+health: At risk              # Active | On track | At risk | Needs plan | Needs verification | No update | Paused | Release blocked
+milestone: Internal TestFlight testing live
+milestone_date: 2026-10-05   # YYYY-MM-DD, hanya bila tanggalnya memang diketahui
+blocker: Compliance flag belum dijawab, testers group belum ada   # atau: none
+next_step: Buat testers group
+active_dev: Jesynta Harya
+```
+
+Kosongkan field yang belum kamu tahu — field yang dihilangkan tidak mengubah apa-apa, tapi nilai
+yang salah tampil di depan Ken. Yang terbaru menang per field, dan dashboard menandainya
+"reported by <namamu>, <tanggal>". `/capture` dan `/onboard` akan menanyakan field ini.
+
 Skill akan **membersihkan kredensial dulu**, menulis file
 `apps/<slug>/capture/<YYYY-MM-DD>_<nama>_<topik>.md` (append-only, tidak pernah mengedit capture
 lama), dan hanya *mengusulkan* Plane issue — tidak pernah membuatnya otomatis.

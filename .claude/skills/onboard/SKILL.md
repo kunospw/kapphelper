@@ -119,6 +119,12 @@ if any. Then invoke `/capture` with those answers (it scrubs credentials, format
 only *drafts* Plane issues). Fields: `source: session`, `from:` as decided in step 7, `type:`
 `issue` or `design` as fits, `about:` the project.
 
+Because this first capture is a status report, also collect the **dashboard status fields** from
+the `capture` skill (project id, `health`, `milestone` + `milestone_date`, `blocker`, `next_step`,
+`active_dev`). Ask each one; skip any they don't know rather than guessing — an omitted field
+changes nothing on the dashboard. This is how a developer fills in their project's milestone and
+blocker without touching `portfolio.json`.
+
 ### 9. Handover (safe push)
 
 Invoke `/handover`. Before it pushes, show `git status` and `git log origin/main..HEAD --oneline`

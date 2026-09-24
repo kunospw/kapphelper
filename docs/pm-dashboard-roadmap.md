@@ -199,6 +199,10 @@ kasar untuk 1 developer (Dyah) paruh waktu; sesuaikan.
   ikut `sync-all`): capture yang `from:`-nya developer terdaftar menjadi aktivitas; capture dari
   stakeholder (Ken, Iwan) dilewati. *Belum*: ingest memory, dan daftar "pertanyaan terbuka" dari
   `status: unconfirmed`, dan capture stakeholder sebagai timeline project.
+- **Status project dari capture** — *selesai 2026-09-24*: frontmatter opsional (`project`, `health`,
+  `milestone`, `milestone_date`, `blocker`, `next_step`, `active_dev`) memperbarui baris project;
+  terbaru menang per field, diberi label "reported by <nama>, <tanggal>". Ini menutup celah
+  milestone kosong tanpa mengedit `portfolio.json`.
 - **Peta identitas developer**: `githubLogin`, `email`, `aliases` per orang (kolom sudah ada
   di `Developer`) supaya commit/work-item tak membuat profil ganda.
 - **Model Milestone** baru: `Milestone{projectId, title, targetDate, status, ownerId}` +
