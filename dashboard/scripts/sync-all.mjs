@@ -21,6 +21,7 @@ const stages = [
   { label: 'github', envFiles: ['.env.server', '.env.sync'], script: 'scripts/sync-github.mjs', required: false },
   { label: 'tsapp-git', envFiles: ['.env.server', '.env.gitlog'], script: 'scripts/sync-local-git.mjs', required: false },
   { label: 'plane', envFiles: ['.env.server', '.env.plane'], script: 'scripts/sync-plane.mjs', required: false },
+  { label: 'captures', envFiles: ['.env.server'], script: 'scripts/sync-captures.mjs', required: false },
 ];
 
 const { existsSync } = await import('node:fs');

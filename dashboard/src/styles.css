@@ -670,3 +670,5 @@ h1, h2, h3, h4, p { margin: 0; }
   .ab-group-hint { display: none; }
   .ab-detail { padding-left: 16px; }
 }
+
+.activity-source.source-capture { color: #c11574; background: #fdf2fa; }

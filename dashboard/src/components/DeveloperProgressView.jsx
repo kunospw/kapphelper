@@ -7,6 +7,7 @@ const SOURCE_LABELS = {
   plane: 'Plane work item',
   documentation: 'Documentation',
   meeting: 'Meeting update',
+  capture: 'KAppHelper capture',
 };
 
 function SourceTag({ source }) {
