@@ -15,7 +15,7 @@ Plane work items, verified project context/blockers/next actions, and (planned) 
 summaries. It must stay read-only for anything risky — builds, pushes, deploys, store uploads, and
 DB changes remain manual, done by developers themselves. **One deliberate exception (2026-09-24):**
 *Mark done* — audited, confirm-first, and only written back to Plane when `PLANE_WRITE_ENABLED=true`
-(see `dashboard/README.md`).
+(see `dashboard/README.md`). Marking done is permission-checked by access level (`pm`/`lead` any item, `dev` only their own).
 
 React + Vite frontend, talking to a small Express API (`dashboard/server/`) backed by
 **PostgreSQL** via Prisma (migrated off Firebase 2026-09-16 — Postgres fits the rest of the Kairos

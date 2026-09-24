@@ -216,7 +216,10 @@ kasar untuk 1 developer (Dyah) paruh waktu; sesuaikan.
 
 **Keluaran**: PM melihat beban dan hambatan tiap orang dalam satu halaman.
 
-- **Role**: tambah `role` (`pm | lead | dev`) di `DevUser`; dev hanya lihat kartunya sendiri
+- **Role — sebagian selesai 2026-09-24**: `DevUser.accessRole` (`pm | lead | dev`) sudah ada dan
+  dipakai untuk izin *Mark done* (pm/lead semua item, dev hanya miliknya; ditegakkan di server, dicatat
+  emailnya). *Belum*: membatasi halaman lain per role dan catatan 1:1 privat. Rencana awal:
+  tambah `role` (`pm | lead | dev`) di `DevUser`; dev hanya lihat kartunya sendiri
   + portfolio, PM/lead lihat semua. Catatan 1:1 (jika ada) privat per PM.
 - **Mark done — selesai 2026-09-24**: tombol ✓ Done di board (item Plane dan item manual), tercatat
   siapa/kapan/catatan (`ActionCompletion`); untuk Plane, status *Done* ikut ditulis balik ke Plane bila

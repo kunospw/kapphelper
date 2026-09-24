@@ -89,6 +89,29 @@ It reads `PLANE_BASE_URL` / `PLANE_WORKSPACE` / `PLANE_PROJECT_ID` from `.env.pl
 token must be allowed to edit work items — otherwise Plane answers 403 and the completion is kept
 locally with the reason shown ("Plane was not changed — …") and a **Retry Plane update** link.
 
+### Who may mark done — access levels
+
+Each login has an **access level** (`DevUser.accessRole`; shown as a pill next to the name in the top bar):
+
+| Level | May mark done | May reopen / retry |
+|---|---|---|
+| `pm`, `lead` | any action, any owner | any completion |
+| `dev` (default) | only actions **they own** (their linked developer is an assignee) | completions they made, or on their own items |
+
+Everyone signed in can still *see* everything. The API enforces the rules on every request and reads the
+account fresh each time, so a change applies on the person's very next click (no re-login), and a deactivated
+account is locked out immediately. The browser only hides buttons the server would refuse. A `dev` login with
+no developer profile can view but not complete anything. Every completion stores the actor's **email**.
+
+```bash
+npm run set-access                                      # list logins and their levels
+npm run set-access -- someone@kairossolutions.co lead   # change a level (never touches the password)
+npm run add-dev-user -- "email" "Name" "Role · Focus" --access=dev   # new logins default to dev
+```
+
+⚠ `add-dev-user` on an **existing** email resets that person's password — use `set-access` to change a level.
+Tests: `npm test` (unit) and `npm run test:e2e` (real API + DB, temporary data, Plane never touched — local dev DB only).
+
 Behaviour worth knowing:
 - **Plane failures never lose a completion.** It is stored first; the Plane result is recorded on it.
 - **Reopen** works for anything not yet written to Plane. Once Plane itself was changed, reopen it in
@@ -97,7 +120,6 @@ Behaviour worth knowing:
   shows it open again (Plane wins).
 - The write is exactly one operation (set state → completed) on one work item. The token never reaches
   the browser and never appears in an error message.
-- Tests: `npm test` (Plane client against a fake fetch — no network).
 
 ## Freshness
 
