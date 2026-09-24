@@ -41,6 +41,27 @@ const results = [];
 const startedAt = new Date();
 console.log(`▶ sync-all starting ${startedAt.toISOString()}`);
 
+// Pull teammates' pushed captures before ingesting them. Without this the
+// dashboard only ever sees captures that exist in THIS checkout, so a junior's
+// pushed capture would never show up. Fast-forward only, and never fatal: if the
+// pull can't apply cleanly (local edits in the way, no network, diverged), the
+// sync carries on with what's on disk and says so. Set SYNC_GIT_PULL=false to skip.
+if (process.env.SYNC_GIT_PULL !== 'false') {
+  const repoRoot = resolve(dashboardRoot, '..');
+  const pull = await run(['-e', `
+    const { spawnSync } = require('node:child_process');
+    const r = spawnSync('git', ['-C', ${JSON.stringify(repoRoot)}, 'pull', '--ff-only', '--quiet'], { encoding: 'utf8', timeout: 60000 });
+    process.stdout.write(((r.stdout || '') + (r.stderr || '')).trim());
+    process.exit(r.status ?? 1);
+  `]);
+  if (pull.code === 0) {
+    console.log('  ✓ kapphelper: git pull --ff-only ok (captures pushed by teammates are included)');
+  } else {
+    const reason = (pull.stdout || pull.stderr || 'unknown error').split(/\r?\n/)[0];
+    console.warn(`  ⚠ kapphelper: git pull skipped — ${reason} (continuing with local files)`);
+  }
+}
+
 for (const stage of stages) {
   const envArgs = stage.envFiles.flatMap((file) => [`--env-file=${file}`]);
   const missingEnv = stage.envFiles.filter((file) => !existsSync(resolve(dashboardRoot, file)));
