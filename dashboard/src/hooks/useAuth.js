@@ -1,32 +1,37 @@
 import { useCallback, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
-import { auth, firebaseConfigured, githubProvider } from '../lib/firebase.js';
+import { apiConfigured, getStoredRefreshToken, login, logout, restoreSession } from '../lib/api.js';
 
-const CONFIG_MESSAGE = 'Firebase configuration is missing. Add the VITE_FIREBASE_* values to dashboard/.env.local.';
+const CONFIG_MESSAGE = 'API is not configured. Add VITE_API_BASE_URL to dashboard/.env.local.';
 
 export function useAuth() {
-  const [state, setState] = useState({ status: firebaseConfigured ? 'loading' : 'configuration-required', user: null, error: null });
+  const [state, setState] = useState({ status: apiConfigured ? 'loading' : 'configuration-required', user: null, error: null });
 
   useEffect(() => {
-    if (!firebaseConfigured || !auth) return undefined;
-    return onAuthStateChanged(auth, (user) => setState({ status: user ? 'authenticated' : 'unauthenticated', user, error: null }));
+    if (!apiConfigured) return;
+    if (!getStoredRefreshToken()) {
+      setState({ status: 'unauthenticated', user: null, error: null });
+      return;
+    }
+    restoreSession()
+      .then((user) => setState({ status: 'authenticated', user: user ?? {}, error: null }))
+      .catch(() => setState({ status: 'unauthenticated', user: null, error: null }));
   }, []);
 
-  const signIn = useCallback(async () => {
-    if (!auth) { setState({ status: 'configuration-required', user: null, error: CONFIG_MESSAGE }); return; }
+  const signIn = useCallback(async (email, password) => {
+    if (!apiConfigured) { setState({ status: 'configuration-required', user: null, error: CONFIG_MESSAGE }); return; }
     setState((current) => ({ ...current, status: 'signing-in', error: null }));
     try {
-      await signInWithPopup(auth, githubProvider());
+      const user = await login(email, password);
+      setState({ status: 'authenticated', user: user ?? {}, error: null });
     } catch (error) {
-      const friendly = error.code === 'auth/operation-not-allowed'
-        ? 'GitHub sign-in is not enabled in Firebase Authentication yet.'
-        : error.code === 'auth/popup-closed-by-user'
-          ? 'GitHub sign-in was cancelled.'
-          : error.message ?? 'GitHub sign-in failed.';
-      setState((current) => ({ ...current, status: 'unauthenticated', error: friendly }));
+      setState((current) => ({ ...current, status: 'unauthenticated', error: error.message ?? 'Sign-in failed.' }));
     }
   }, []);
 
-  const signOutUser = useCallback(() => auth ? signOut(auth) : Promise.resolve(), []);
+  const signOutUser = useCallback(async () => {
+    await logout();
+    setState({ status: 'unauthenticated', user: null, error: null });
+  }, []);
+
   return { ...state, signIn, signOut: signOutUser };
 }

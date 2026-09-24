@@ -1,10 +1,7 @@
 import { createSign } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { firestoreAdmin } from './firebase-admin.mjs';
+import { prisma } from '../server/src/db.js';
 
-const dashboardRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const required = ['GITHUB_APP_ID', 'GITHUB_APP_INSTALLATION_ID', 'GITHUB_PRIVATE_KEY_PATH', 'GITHUB_REPOSITORIES'];
 const missing = required.filter((name) => !process.env[name]);
 if (missing.length) {
@@ -32,13 +29,56 @@ async function github(path, token, method = 'GET') {
 const jwt = await appJwt();
 const installation = await github(`/app/installations/${process.env.GITHUB_APP_INSTALLATION_ID}/access_tokens`, jwt, 'POST');
 const repositories = process.env.GITHUB_REPOSITORIES.split(',').map((value) => value.trim()).filter(Boolean);
-const activity = [];
+
+let commitCount = 0;
+let pullRequestCount = 0;
 for (const repository of repositories) {
-  const [commits, pullRequests] = await Promise.all([github(`/repos/${repository}/commits?per_page=30`, installation.token), github(`/repos/${repository}/pulls?state=open&per_page=30`, installation.token)]);
-  activity.push({ repository, commits: commits.map((commit) => ({ sha: commit.sha.slice(0, 7), authorLogin: commit.author?.login ?? null, authorName: commit.commit.author.name, authorEmail: commit.commit.author.email, timestamp: commit.commit.author.date, title: commit.commit.message.split('\n')[0], url: commit.html_url })), openPullRequests: pullRequests.map((pullRequest) => ({ number: pullRequest.number, title: pullRequest.title, authorLogin: pullRequest.user?.login ?? null, updatedAt: pullRequest.updated_at, url: pullRequest.html_url })) });
+  const [commits, pullRequests] = await Promise.all([
+    github(`/repos/${repository}/commits?per_page=30`, installation.token),
+    github(`/repos/${repository}/pulls?state=open&per_page=30`, installation.token),
+  ]);
+
+  for (const commit of commits) {
+    const sha = commit.sha.slice(0, 7);
+    await prisma.githubCommit.upsert({
+      where: { sha_repository: { sha, repository } },
+      update: {
+        authorLogin: commit.author?.login ?? null,
+        authorName: commit.commit.author.name,
+        authorEmail: commit.commit.author.email,
+        timestamp: new Date(commit.commit.author.date),
+        title: commit.commit.message.split('\n')[0],
+        url: commit.html_url,
+      },
+      create: {
+        sha,
+        repository,
+        origin: 'github-app',
+        authorLogin: commit.author?.login ?? null,
+        authorName: commit.commit.author.name,
+        authorEmail: commit.commit.author.email,
+        timestamp: new Date(commit.commit.author.date),
+        title: commit.commit.message.split('\n')[0],
+        url: commit.html_url,
+      },
+    });
+  }
+  commitCount += commits.length;
+
+  for (const pullRequest of pullRequests) {
+    await prisma.githubPullRequest.upsert({
+      where: { number_repository: { number: pullRequest.number, repository } },
+      update: { title: pullRequest.title, authorLogin: pullRequest.user?.login ?? null, updatedAt: new Date(pullRequest.updated_at), url: pullRequest.html_url },
+      create: { number: pullRequest.number, repository, title: pullRequest.title, authorLogin: pullRequest.user?.login ?? null, updatedAt: new Date(pullRequest.updated_at), url: pullRequest.html_url },
+    });
+  }
+  pullRequestCount += pullRequests.length;
 }
-const generatedAt = new Date().toISOString();
-const db = await firestoreAdmin();
-await db.doc('dashboard/github-activity').set({ generatedAt, repositories: activity });
-await db.doc('sync-runs/github').set({ source: 'GitHub App', status: 'success', refreshedAt: generatedAt, repositoryCount: activity.length });
-console.log(`GitHub activity published to Firestore: ${activity.length} repository/repositories.`);
+
+const refreshedAt = new Date();
+await prisma.syncRun.create({
+  data: { source: 'github', status: 'success', detail: { repositoryCount: repositories.length, commitCount, pullRequestCount }, refreshedAt },
+});
+
+console.log(`GitHub activity synced to Postgres: ${repositories.length} repository/repositories.`);
+await prisma.$disconnect();

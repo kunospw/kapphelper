@@ -76,14 +76,14 @@ function App() {
         {status === 'error' && (
           <ErrorState
             message={error ?? 'Snapshot could not be read.'}
-            hint="Confirm that your account is active in Firestore members and that an admin has published the first dashboard snapshot."
+            hint="Confirm that your account is active (ask an admin) and that the first portfolio publish has run (npm run publish:portfolio)."
           />
         )}
 
         {status === 'ready' && (
           <>
             {view === 'meeting' && (
-              <MeetingView projects={filtered} developers={data?.developerActivity} githubConnected={Boolean(data?.github?.generatedAt)} planeConnected={Boolean(data?.plane?.generatedAt)} onOpenProject={openProject} />
+              <MeetingView projects={filtered} developers={data?.developerActivity ?? []} githubConnected={Boolean(data?.github?.generatedAt)} planeConnected={Boolean(data?.plane?.generatedAt)} onOpenProject={openProject} currentDeveloperId={auth.user?.developerId} query={query} />
             )}
 
             {view === 'portfolio' && (

@@ -1,0 +1,190 @@
+// KAppHelper Dashboard — Postgres schema (replaces Firestore).
+// See plan: memory/project_kapphelper-dashboard-requirements.md and apps/kapphelper/APP.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// The roster of people whose work shows up in the dashboard. Not every row is a
+/// login account — commit/work-item authors who aren't registered devs still get a
+/// stub row here so their activity has somewhere to live (see DevUser below).
+model Developer {
+  id          String   @id // slug, e.g. "dyah-rini" — matches data/portfolio.json ids
+  name        String
+  role        String?
+  focus       String?
+  githubLogin String?
+  email       String?
+  aliases     Json     @default("[]") // string[]
+  lastUpdated DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  devUser    DevUser?
+  activities Activity[]
+  actions    Action[]
+}
+
+/// Login accounts. A row here is required to log in at all — this IS the
+/// "registered dev emails" allowlist. Optionally linked to a Developer for
+/// display name / activity association.
+model DevUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  active       Boolean   @default(true)
+  developerId  String?   @unique
+  developer    Developer? @relation(fields: [developerId], references: [id])
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+
+  refreshTokens RefreshToken[]
+}
+
+/// Refresh tokens, stored hashed, so logout/revocation doesn't require making
+/// short-lived access tokens stateful.
+model RefreshToken {
+  id        String    @id @default(cuid())
+  devUserId String
+  devUser   DevUser   @relation(fields: [devUserId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+}
+
+/// One row per project in the portfolio — mirrors data/portfolio.json `projects[]`.
+model Project {
+  id              String   @id // slug, e.g. "kdocverify"
+  name            String
+  kind            String?
+  status          String?
+  client          String?
+  owner           String?
+  activeDeveloper String?
+  lifecycle       String?
+  summary         String?
+  repositories    Json     @default("[]") // string[]
+  lastConfirmed   String?
+  nextStep        String?
+  nextWhy         String?
+  risks           Json     @default("[]") // string[]
+  release         Json? // free-form key/value
+  meeting         Json? // free-form key/value
+  sources         Json     @default("[]") // string[]
+  evidence        Json     @default("[]") // string[]
+  updatedAt       DateTime @updatedAt
+
+  activities Activity[]
+  actions    Action[]
+}
+
+/// A developer's activity feed entry — either hand-authored (origin: "manual",
+/// published from data/portfolio.json) or derived from a synced commit/work-item
+/// (origin: "synced", written by scripts/merge-activity.mjs). Both origins are
+/// combined and capped the same way the old client-side merge did.
+model Activity {
+  id            String    @id @default(cuid())
+  developerId   String
+  developer     Developer @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  projectId     String?
+  project       Project?  @relation(fields: [projectId], references: [id])
+  projectLabel  String? // fallback display name when projectId doesn't resolve to a registered project
+  timestamp     DateTime
+  title         String
+  summary       String?
+  sourceType    String // "meeting" | "commit" | "plane" | "documentation" | ...
+  sourceRef     String?
+  url           String?
+  origin        String // "manual" | "synced"
+  createdAt     DateTime  @default(now())
+
+  @@index([developerId, timestamp])
+}
+
+/// A developer's next-action item — same manual/synced split as Activity.
+model Action {
+  id           String    @id @default(cuid())
+  developerId  String
+  developer    Developer @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  projectId    String?
+  project      Project?  @relation(fields: [projectId], references: [id])
+  projectLabel String?
+  status       String?
+  priority     String? // "urgent" | "high" | "medium" | "low" — from Plane; null for manual actions
+  title        String
+  detail       String?
+  source       String?
+  due          String?
+  createdAtSrc DateTime? // createdAt as reported by the source system (Plane etc.)
+  updatedAtSrc DateTime? // updatedAt as reported by the source system
+  origin       String // "manual" | "synced"
+  createdAt    DateTime  @default(now())
+
+  @@index([developerId])
+}
+
+/// Raw synced commits — audit trail + re-merge source. Unique per (sha, repository)
+/// so re-running a sync script is a no-op for commits already seen.
+model GithubCommit {
+  id          String   @id @default(cuid())
+  sha         String
+  repository  String
+  project     String?
+  origin      String // "github-app" | "local-git"
+  authorLogin String?
+  authorName  String?
+  authorEmail String?
+  timestamp   DateTime
+  title       String?
+  url         String?
+  syncedAt    DateTime @default(now())
+
+  @@unique([sha, repository])
+}
+
+model GithubPullRequest {
+  id          String   @id @default(cuid())
+  number      Int
+  repository  String
+  title       String?
+  authorLogin String?
+  updatedAt   DateTime?
+  url         String?
+  syncedAt    DateTime @default(now())
+
+  @@unique([number, repository])
+}
+
+/// Raw synced Plane work items — id is Plane's own item id.
+model PlaneWorkItem {
+  id         String    @id
+  identifier String?
+  name       String?
+  state      String?
+  priority   String?
+  assignees  Json      @default("[]") // [{id, name, email}]
+  targetDate String?
+  createdAt  DateTime?
+  updatedAt  DateTime?
+  url        String?
+  project    String?
+  syncedAt   DateTime  @default(now())
+}
+
+/// Audit history of sync/publish runs — appended, not overwritten, so this is
+/// strictly more useful than the old fixed-doc-per-source Firestore version.
+model SyncRun {
+  id          String   @id @default(cuid())
+  source      String // "local-git" | "github" | "plane" | "portfolio"
+  status      String // "success" | "error"
+  detail      Json     @default("{}")
+  refreshedAt DateTime @default(now())
+
+  @@index([source, refreshedAt])
+}

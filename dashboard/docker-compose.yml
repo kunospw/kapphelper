@@ -1,0 +1,19 @@
+# Local dev only. Ken's ask (see memory/project_kapphelper-dashboard-requirements.md)
+# is to eventually host the dashboard on a Kairos app server — that target isn't
+# chosen yet, so this compose file is just for running Postgres locally.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kapphelper-dashboard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kapphelper
+      POSTGRES_PASSWORD: kapphelper
+      POSTGRES_DB: kapphelper_dashboard
+    ports:
+      - "5433:5432"
+    volumes:
+      - kapphelper-dashboard-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  kapphelper-dashboard-postgres-data:

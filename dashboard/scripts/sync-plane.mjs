@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { firestoreAdmin } from './firebase-admin.mjs';
+import { prisma } from '../server/src/db.js';
 
 const dashboardRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const tokenPath = process.env.PLANE_TOKEN_PATH || resolve(dashboardRoot, '..', '..', 'kapphelper-dashboard-local-secrets', 'plane-readonly.token');
@@ -42,16 +42,13 @@ const authMethods = [
 
 for (const candidate of candidates) {
   for (const auth of authMethods) {
-    const attempt = await fetch(candidate, {
-      headers: { Accept: 'application/json', ...auth.headers },
-    });
+    const attempt = await fetch(candidate, { headers: { Accept: 'application/json', ...auth.headers } });
     const contentType = attempt.headers.get('content-type') ?? '';
     if (attempt.ok && contentType.includes('application/json')) {
       response = attempt;
       endpoint = candidate;
       break;
     }
-    // Deliberately record only the authentication *method*, never the token.
     attempts.push(`${attempt.status} ${candidate} [${auth.name}] (${contentType || 'no content type'})`);
   }
   if (response) break;
@@ -70,11 +67,43 @@ const workItems = records.map((item) => ({
   targetDate: item.target_date ?? null,
   updatedAt: item.updated_at ?? item.created_at ?? null,
   createdAt: item.created_at ?? null,
-  url: item.id ? `${configuredBase}/${process.env.PLANE_WORKSPACE}/browse/${item.id}` : null,
 }));
 
-const generatedAt = new Date().toISOString();
-const db = await firestoreAdmin();
-await db.doc('dashboard/plane-activity').set({ generatedAt, project: { id: process.env.PLANE_PROJECT_ID, name: process.env.PLANE_PROJECT_NAME }, workItems });
-await db.doc('sync-runs/plane').set({ source: 'Plane API', status: 'success', refreshedAt: generatedAt, project: process.env.PLANE_PROJECT_NAME, workItemCount: workItems.length, endpoint });
-console.log(`Plane activity published to Firestore: ${process.env.PLANE_PROJECT_NAME} (${workItems.length} work items).`);
+for (const item of workItems) {
+  await prisma.planeWorkItem.upsert({
+    where: { id: item.id },
+    update: {
+      identifier: item.identifier,
+      name: item.name,
+      state: item.state,
+      priority: item.priority,
+      assignees: item.assignees,
+      targetDate: item.targetDate,
+      createdAt: item.createdAt ? new Date(item.createdAt) : null,
+      updatedAt: item.updatedAt ? new Date(item.updatedAt) : null,
+      project: process.env.PLANE_PROJECT_NAME,
+      url: `${configuredBase}/${process.env.PLANE_WORKSPACE}/browse/${item.id}`,
+    },
+    create: {
+      id: item.id,
+      identifier: item.identifier,
+      name: item.name,
+      state: item.state,
+      priority: item.priority,
+      assignees: item.assignees,
+      targetDate: item.targetDate,
+      createdAt: item.createdAt ? new Date(item.createdAt) : null,
+      updatedAt: item.updatedAt ? new Date(item.updatedAt) : null,
+      project: process.env.PLANE_PROJECT_NAME,
+      url: `${configuredBase}/${process.env.PLANE_WORKSPACE}/browse/${item.id}`,
+    },
+  });
+}
+
+const refreshedAt = new Date();
+await prisma.syncRun.create({
+  data: { source: 'plane', status: 'success', detail: { project: process.env.PLANE_PROJECT_NAME, workItemCount: workItems.length, endpoint }, refreshedAt },
+});
+
+console.log(`Plane activity synced to Postgres: ${process.env.PLANE_PROJECT_NAME} (${workItems.length} work items).`);
+await prisma.$disconnect();

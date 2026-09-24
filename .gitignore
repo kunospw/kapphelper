@@ -5,9 +5,11 @@
 !dashboard/.env.sync.example
 !dashboard/.env.gitlog.example
 !dashboard/.env.plane.example
+!dashboard/.env.server.example
 dashboard/.env.sync
 dashboard/.env.gitlog
 dashboard/.env.plane
+dashboard/.env.server
 dashboard/public/live/github-activity.json
 dashboard/node_modules/
 dashboard/dist/
