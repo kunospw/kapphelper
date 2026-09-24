@@ -8,9 +8,21 @@ const VIEW_TITLES = {
   detail: { title: 'Project detail', lead: 'Full context, release safety, source records, and the recommended next action.' },
 };
 
+// "2026-09-24T07:50:45.851Z" -> "24 Sep 2026, 15:50 SGT"; a bare date stays a date.
+function formatSnapshotDate(value) {
+  if (!value) return 'unknown';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Singapore' }).format(new Date(`${value}T00:00:00+08:00`));
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return `${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Singapore' }).format(date)} SGT`;
+}
+
 export function TopBar({ view, snapshotDate, query, onQueryChange, source, user, onSignOut }) {
   const meta = VIEW_TITLES[view] ?? VIEW_TITLES.portfolio;
   const freshness = describeFreshness(snapshotDate);
+  const displayName = user?.displayName ?? user?.email ?? 'User';
 
   return (
     <header className="topbar">
@@ -20,16 +32,21 @@ export function TopBar({ view, snapshotDate, query, onQueryChange, source, user,
         <p className="topbar-lead">{meta.lead}</p>
       </div>
 
-        <div className="topbar-side">
-          {user && <div className="user-menu"><span className="user-avatar">{(user.displayName ?? user.email ?? 'U').slice(0, 1).toUpperCase()}</span><span className="user-name">{user.displayName ?? user.email}</span>{user.accessRole && <span className={`user-role user-role-${user.accessRole}`} title="Your permission level">{user.accessRole}</span>}<button type="button" onClick={onSignOut}>Sign out</button></div>}
-          <div
-          className={`snapshot-chip snapshot-${freshness.tone}`}
-          title={source?.detail ?? 'Snapshot source unknown'}
-        >
+      {user && (
+        <div className="user-menu">
+          <span className="user-avatar" aria-hidden="true">{displayName.slice(0, 1).toUpperCase()}</span>
+          <span className="user-name" title={displayName}>{displayName}</span>
+          {user.accessRole && <span className={`user-role user-role-${user.accessRole}`} title="Your permission level">{user.accessRole}</span>}
+          <button type="button" className="user-signout" onClick={onSignOut}>Sign out</button>
+        </div>
+      )}
+
+      <div className="topbar-tools">
+        <div className={`snapshot-chip snapshot-${freshness.tone}`} title={source?.detail ?? 'Snapshot source unknown'}>
           <span className="snapshot-dot" aria-hidden="true" />
           <div>
             <strong>{source?.label ?? 'Snapshot'}</strong>
-            <span>Data as of {snapshotDate ?? 'unknown'} · {freshness.label}</span>
+            <span>Data as of {formatSnapshotDate(snapshotDate)} · {freshness.label}</span>
           </div>
         </div>
 
