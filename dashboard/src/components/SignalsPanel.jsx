@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { planeCopy } from '../lib/planeCopy.js';
 
 // "Needs attention": rule-based signals from GET /api/signals (server/src/signals.js).
 // Grouped per project / person so a project with five problems is one card, not five rows.
@@ -32,7 +33,16 @@ function summarize(signals) {
   return [...counts].map(([type, count]) => `${count > 1 ? `${count} × ` : ''}${TYPE_LABEL[type] ?? type}`).join(' · ');
 }
 
-function SignalRow({ signal }) {
+function SignalRow({ signal, planeWriteMode, busyKey, onMarkDone }) {
+  const [confirming, setConfirming] = useState(false);
+  const [note, setNote] = useState('');
+  const busy = busyKey === signal.actionKey;
+  const canDone = Boolean(signal.actionKey && signal.canComplete && onMarkDone);
+
+  const confirm = async () => {
+    try { await onMarkDone({ key: signal.actionKey, title: signal.actionTitle }, note); } finally { setConfirming(false); }
+  };
+
   return (
     <li className={`sg-row sg-${signal.severity}`}>
       <span className="sg-dot" title={`${SEVERITY_LABEL[signal.severity]} severity`} aria-label={`${SEVERITY_LABEL[signal.severity]} severity`} />
@@ -48,12 +58,28 @@ function SignalRow({ signal }) {
             ))}
           </p>
         )}
+        {signal.actionKey && !signal.canComplete && <p className="ab-locked-note">Only its owner or a PM/lead can mark this done.</p>}
+        {confirming && (
+          <div className="ab-confirm sg-confirm" role="group" aria-label="Confirm mark done">
+            <p><strong>Mark {signal.actionTitle} as done?</strong> {planeCopy(planeWriteMode)}</p>
+            <label>Note (optional)
+              <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="e.g. shipped and verified on Live" />
+            </label>
+            <div className="ab-confirm-actions">
+              <button type="button" className="ab-btn ab-btn-primary" disabled={busy} onClick={confirm}>{busy ? 'Saving…' : 'Confirm done'}</button>
+              <button type="button" className="ab-btn" disabled={busy} onClick={() => setConfirming(false)}>Cancel</button>
+            </div>
+          </div>
+        )}
       </div>
+      {canDone && !confirming && (
+        <button type="button" className="sg-done" aria-label={`Mark done: ${signal.actionTitle}`} onClick={() => setConfirming(true)}>✓ Done</button>
+      )}
     </li>
   );
 }
 
-export function SignalsPanel({ data, personId = 'all', personName }) {
+export function SignalsPanel({ data, personId = 'all', personName, planeWriteMode, busyKey, onMarkDone }) {
   const [toggled, setToggled] = useState(() => new Set());
   const [showLow, setShowLow] = useState(false);
 
@@ -121,7 +147,7 @@ export function SignalsPanel({ data, personId = 'all', personName }) {
                   <span className="sg-summary">{summarize(group.signals)}</span>
                   <span className="sg-toggle">{open ? 'Hide' : 'Show'}</span>
                 </button>
-                {open && <ul className="sg-list">{group.signals.map((signal) => <SignalRow key={signal.id} signal={signal} />)}</ul>}
+                {open && <ul className="sg-list">{group.signals.map((signal) => <SignalRow key={signal.id} signal={signal} planeWriteMode={planeWriteMode} busyKey={busyKey} onMarkDone={onMarkDone} />)}</ul>}
               </li>
             );
           })}

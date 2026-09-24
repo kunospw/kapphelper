@@ -4,19 +4,24 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { computeSignals } from '../signals.js';
+import { canComplete } from '../auth/roles.js';
 
 export const signalsRouter = Router();
 
-signalsRouter.get('/', async (_req, res) => {
+signalsRouter.get('/', async (req, res) => {
   try {
-    const [projects, developers, activities, planeItems, completionRows, runRows] = await Promise.all([
+    const [projects, developers, activities, planeItems, completionRows, runRows, ownerRows] = await Promise.all([
       prisma.project.findMany(),
       prisma.developer.findMany({ select: { id: true, name: true, aliases: true } }),
       prisma.activity.findMany({ select: { developerId: true, timestamp: true, origin: true } }),
       prisma.planeWorkItem.findMany(),
       prisma.actionCompletion.findMany(),
       Promise.all(['plane', 'github', 'local-git', 'captures'].map((source) => prisma.syncRun.findFirst({ where: { source }, orderBy: { refreshedAt: 'desc' } }))),
+      prisma.action.findMany({ where: { externalId: { not: null } }, select: { externalId: true, developerId: true } }),
     ]);
+    // Owners of a Plane item = developers holding an Action row for it (same source the actions API uses).
+    const ownersByItem = new Map();
+    for (const row of ownerRows) ownersByItem.set(row.externalId, [...(ownersByItem.get(row.externalId) ?? []), row.developerId]);
     const [plane, github, localGit, captures] = runRows;
 
     const lastActivity = new Map();
@@ -44,7 +49,12 @@ signalsRouter.get('/', async (_req, res) => {
       now: Date.now(),
     });
 
-    res.json({ generatedAt: new Date().toISOString(), ...result });
+    // Computed for THIS viewer so the browser never re-implements the rule; POST /api/actions/complete enforces it again.
+    const signals = result.signals.map((signal) => (signal.actionKey
+      ? { ...signal, canComplete: canComplete(req.devUser, ownersByItem.get(signal.actionKey.slice('plane:'.length)) ?? []) }
+      : signal));
+
+    res.json({ generatedAt: new Date().toISOString(), ...result, signals });
   } catch (error) {
     console.error('[signals] failed:', error?.message ?? error);
     res.status(500).json({ error: 'Could not compute signals.' });

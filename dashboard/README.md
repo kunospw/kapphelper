@@ -84,7 +84,9 @@ most urgent group starts open; picking a person on the board filters it to them.
 | No activity | developer has no recorded activity for > 5 days (a prompt to ask; says so when no connected source covers them) | medium |
 | Sync old | a source not synced for > 3 hours | low · medium after a day |
 
-Items marked done in the dashboard are skipped. Thresholds live in one place (`THRESHOLDS`) and are returned
+Plane-item signals (Overdue, Stalled, Unassigned) have a **✓ Done** button: the same confirm-first flow, audit
+and access rules as the board (`POST /api/actions/complete`; the API computes `canComplete` for the signed-in
+user and enforces it again on write). Items marked done in the dashboard are skipped. Thresholds live in one place (`THRESHOLDS`) and are returned
 by the API. These signals are also the measured-facts layer the future AI advisor will read.
 
 ## Mark done (update + sync back to the source)

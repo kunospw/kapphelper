@@ -5,6 +5,7 @@ import { describeFreshness } from '../lib/freshness.js';
 import { meetingRowFor } from '../lib/meeting.js';
 import { EmptyState, FreshnessBadge, Status } from './primitives.jsx';
 import { SignalsPanel } from './SignalsPanel.jsx';
+import { planeCopy } from '../lib/planeCopy.js';
 
 // Plane (Backlog/Todo/In Progress) and hand-written meeting actions (Open /
 // Needs verification / Needs update) use different words for the same idea —
@@ -75,12 +76,6 @@ function initials(name = '') {
 
 function Avatar({ name, size = 'md' }) {
   return <span className={`ab-avatar ab-avatar-${size}`} aria-hidden="true">{initials(name)}</span>;
-}
-
-function planeCopy(mode) {
-  if (mode === 'live') return 'This will also set the item to Done in Plane.';
-  if (mode === 'dry-run') return 'Plane write-back is in dry-run: Plane will NOT be changed.';
-  return 'Plane write-back is off: this is recorded in the dashboard only and Plane will not change.';
 }
 
 function ActionItem({ action, open, onToggle, showOwner, onOpenProject, projects, planeWriteMode, confirming, busyKey, onAskDone, onCancel, onConfirmDone, onReopen, onRetry }) {
@@ -340,7 +335,7 @@ export function MeetingView({ projects, developers, githubConnected, planeConnec
         ))}
       </nav>
 
-      <SignalsPanel data={signals} personId={personId} personName={person.isAll ? undefined : person.name} />
+      <SignalsPanel data={signals} personId={personId} personName={person.isAll ? undefined : person.name} planeWriteMode={planeWriteMode} busyKey={busyKey} onMarkDone={confirmDone} />
 
       <div className="ab-stats">
         {grouped.map(({ group, items }) => (

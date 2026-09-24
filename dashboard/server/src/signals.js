@@ -124,7 +124,8 @@ export function computeSignals({ projects = [], developers = [], planeItems = []
     const developerIds = [...new Set(assignees.flatMap(developerByName))];
     const label = item.identifier ?? item.id;
     const evidence = [{ label: 'Plane item', text: label, url: item.url ?? null }];
-    const base = { scope: 'action', projectName: item.project ?? null, developerIds, evidence };
+    // actionKey/actionTitle let the UI offer "Mark done" straight from the signal (same key the board uses).
+    const base = { scope: 'action', projectName: item.project ?? null, developerIds, evidence, actionKey: `plane:${item.id}`, actionTitle: `${label} · ${item.name}` };
     const who = names.length ? names.join(', ') : 'Unassigned';
 
     if (item.targetDate) {

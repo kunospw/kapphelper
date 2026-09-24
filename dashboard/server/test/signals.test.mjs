@@ -70,8 +70,15 @@ describe('Plane signals', () => {
     assert.equal(recent.severity, 'medium');
     assert.equal(recent.evidence[0].url, 'https://plane.test/w1');
     assert.deepEqual(recent.developerIds, ['dyah-rini']);
+    assert.equal(recent.actionKey, 'plane:w1', 'lets the UI offer Mark done from the signal');
+    assert.equal(recent.actionTitle, 'KIP-1 · Do the thing');
     assert.equal(find(run({ planeItems: [item({ targetDate: dateOnly(9) })] }), 'plane_overdue').severity, 'high');
     assert.equal(find(run({ planeItems: [item({ targetDate: dateOnly(-3) })] }), 'plane_overdue'), undefined, 'a future date is not overdue');
+  });
+
+  it('project-level signals have no action key (there is nothing to mark done)', () => {
+    const result = run({ projects: [project({ meeting: {} })] });
+    assert.ok(result.signals.every((signal) => signal.actionKey === undefined));
   });
 
   it('ignores closed items', () => {

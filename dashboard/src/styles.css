@@ -748,3 +748,11 @@ h1, h2, h3, h4, p { margin: 0; }
 .sg-how summary { cursor: pointer; font-weight: 600; }
 .sg-how ul { display: grid; gap: 4px; margin-top: 8px; padding-left: 16px; list-style: disc; line-height: 1.5; }
 @media (max-width: 720px) { .sg { padding: 12px; } .sg-summary { display: none; } }
+
+/* Mark done from a signal */
+.sg-row { align-items: flex-start; }
+.sg-body { flex: 1; }
+.sg-done { flex: none; align-self: flex-start; margin-left: 8px; padding: 5px 12px; border: 1px solid #a6f4c5; border-radius: 999px; background: #ecfdf3; color: #027a48; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.sg-done:hover { background: #d1fadf; }
+.sg-done:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.sg-confirm { margin-top: 8px; border: 1px solid #d1fadf; border-radius: var(--radius-sm); }

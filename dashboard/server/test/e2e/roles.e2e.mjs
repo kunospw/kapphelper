@@ -118,6 +118,24 @@ try {
   await call('/api/actions/reopen', { method: 'POST', token: tokens.lead, body: { key: realPlane.key } });
   await call('/api/actions/reopen', { method: 'POST', token: tokens.lead, body: { key: keyB } });
 
+  // ---- Mark done straight from a "Needs attention" signal (same keys and rules as the board)
+  const signalsOf = async (name) => (await call('/api/signals', { token: tokens[name] })).json?.signals ?? [];
+  const planeSignalsLead = (await signalsOf('lead')).filter((signal) => signal.actionKey);
+  if (!planeSignalsLead.length) {
+    console.log('SKIP  no Plane-item signals in this data, signal Mark done not exercised');
+  } else {
+    check('signals: lead may mark every Plane-item signal done', planeSignalsLead.every((signal) => signal.canComplete === true), `${planeSignalsLead.length} signals`);
+    check('signals: an unrelated dev is not offered Mark done', (await signalsOf('deva')).filter((signal) => signal.actionKey).every((signal) => signal.canComplete === false));
+    const target = planeSignalsLead[0];
+    r = await call('/api/actions/complete', { method: 'POST', token: tokens.deva, body: { key: target.actionKey } });
+    check('signals: server still refuses an unrelated dev who forces the request', r.status === 403);
+    r = await call('/api/actions/complete', { method: 'POST', token: tokens.lead, body: { key: target.actionKey, note: 'from signal' } });
+    check('signals: lead completes using the signal action key', r.status === 200 && r.json?.ok, target.actionTitle);
+    check('signals: the item stops being flagged once marked done', !(await signalsOf('lead')).some((signal) => signal.actionKey === target.actionKey));
+    await call('/api/actions/reopen', { method: 'POST', token: tokens.lead, body: { key: target.actionKey } });
+    check('signals: reopening brings the signal back', (await signalsOf('lead')).some((signal) => signal.actionKey === target.actionKey));
+  }
+
   // ---- role changes apply immediately, without logging in again
   await prisma.devUser.update({ where: { email: users.deva.email }, data: { accessRole: 'lead' } });
   r = await call('/api/actions/complete', { method: 'POST', token: tokens.deva, body: { key: keyB } });
